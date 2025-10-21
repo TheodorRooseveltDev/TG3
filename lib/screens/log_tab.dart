@@ -184,7 +184,7 @@ class _LogTabState extends State<LogTab> {
                 style: TextStyle(color: UnderwaterTheme.textLight),
               ),
               value: _sortAscending,
-              activeColor: UnderwaterTheme.surfaceCyan1,
+              activeThumbColor: UnderwaterTheme.surfaceCyan1,
               onChanged: (value) {
                 setState(() {
                   _sortAscending = value;

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
-import '../utils/app_theme.dart';
 import '../utils/underwater_theme.dart';
 import '../screens/dashboard_tab.dart';
 import '../providers/app_provider.dart';

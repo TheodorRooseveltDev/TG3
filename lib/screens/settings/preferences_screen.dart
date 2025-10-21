@@ -250,7 +250,7 @@ class PreferencesScreen extends StatelessWidget {
       ),
       value: value,
       onChanged: onChanged,
-      activeColor: UnderwaterTheme.surfaceCyan1,
+      activeThumbColor: UnderwaterTheme.surfaceCyan1,
       activeTrackColor: UnderwaterTheme.surfaceCyan2,
     );
   }
