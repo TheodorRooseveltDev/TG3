@@ -361,7 +361,7 @@ class SettingsTab extends StatelessWidget {
                               title: 'Privacy Policy',
                               subtitle: 'How we handle your data',
                               onTap: () {
-                                _openWebView(context, 'Privacy Policy', 'https://example.com/privacy');
+                                _openWebView(context, 'Privacy Policy', 'https://www.termsfeed.com/live/f5a1efb4-4c06-413b-a266-bb2ff1466fa4');
                               },
                             ),
                             
@@ -371,7 +371,7 @@ class SettingsTab extends StatelessWidget {
                               title: 'Terms & Conditions',
                               subtitle: 'Terms of service',
                               onTap: () {
-                                _openWebView(context, 'Terms & Conditions', 'https://example.com/terms');
+                                _openWebView(context, 'Terms & Conditions', 'https://www.termsfeed.com/live/85184d36-4301-4a9a-9bd7-26fd75ed4b98');
                               },
                             ),
                             

@@ -18,25 +18,26 @@ import 'unlock_fish_screen.dart';
 
 class DashboardTab extends StatefulWidget {
   final VoidCallback? onViewAllCatches;
-  
+
   const DashboardTab({super.key, this.onViewAllCatches});
 
   @override
   State<DashboardTab> createState() => _DashboardTabState();
 }
 
-class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMixin {
+class _DashboardTabState extends State<DashboardTab>
+    with TickerProviderStateMixin {
   Timer? _questTimer;
-  
+
   // Slot machine animation controllers
   late AnimationController _reel1Controller;
   late AnimationController _reel2Controller;
   late AnimationController _reel3Controller;
-  
+
   bool _isSpinning = false;
   List<String> _selectedFish = [];
   bool _showQuestContent = false; // Add flag to control quest visibility
-  
+
   Map<String, dynamic>? _weatherData;
   bool _isLoadingWeather = false;
   String? _weatherError;
@@ -68,11 +69,11 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
     super.initState();
     _startQuestTimer();
     _fetchCurrentWeather();
-    
+
     // Initialize with 3 random fish
     final shuffled = List<String>.from(_fishImages)..shuffle();
     _selectedFish = shuffled.take(3).toList();
-    
+
     // Initialize slot machine reel controllers with staggered durations
     _reel1Controller = AnimationController(
       duration: const Duration(milliseconds: 2000),
@@ -86,7 +87,7 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
       duration: const Duration(milliseconds: 3000),
       vsync: this,
     );
-    
+
     // CRITICAL FIX: Show quest content if quest already exists
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final appProvider = Provider.of<AppProvider>(context, listen: false);
@@ -109,24 +110,24 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
 
   Future<void> _spinSlotMachine() async {
     if (_isSpinning) return;
-    
+
     // Haptic feedback on spin start
     HapticFeedback.mediumImpact();
-    
+
     setState(() {
       _isSpinning = true;
       _showQuestContent = false; // Hide quest content during spin
     });
-    
+
     // Shuffle and pick 3 random fish
     final shuffled = List<String>.from(_fishImages)..shuffle();
     _selectedFish = shuffled.take(3).toList();
-    
+
     // Start all reels spinning
     _reel1Controller.reset();
     _reel2Controller.reset();
     _reel3Controller.reset();
-    
+
     _reel1Controller.forward();
     HapticFeedback.lightImpact();
     await Future.delayed(const Duration(milliseconds: 500));
@@ -135,22 +136,22 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
     await Future.delayed(const Duration(milliseconds: 500));
     _reel3Controller.forward();
     HapticFeedback.lightImpact();
-    
+
     // Wait for all reels to finish spinning
     // Reel 3 starts at 1000ms and has 3000ms duration = finishes at 4000ms
     // We've already waited 1000ms, so wait 3000ms more
     await Future.delayed(const Duration(milliseconds: 3000));
-    
+
     // Haptic feedback on completion
     HapticFeedback.heavyImpact();
-    
+
     // Wait a moment with all reels stopped before generating quest
     await Future.delayed(const Duration(milliseconds: 800));
-    
+
     // Generate quest from selected fish
     final appProvider = Provider.of<AppProvider>(context, listen: false);
     await appProvider.spinForQuest();
-    
+
     // Show quest content immediately with animation and re-enable button
     if (mounted) {
       setState(() {
@@ -170,11 +171,11 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
     final difference = tomorrow.difference(now);
-    
+
     final hours = difference.inHours.toString().padLeft(2, '0');
     final minutes = (difference.inMinutes % 60).toString().padLeft(2, '0');
     final seconds = (difference.inSeconds % 60).toString().padLeft(2, '0');
-    
+
     return '$hours:$minutes:$seconds';
   }
 
@@ -185,16 +186,46 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
     });
 
     try {
+      final appProvider = Provider.of<AppProvider>(context, listen: false);
+      if (!appProvider.preferences.locationServicesEnabled) {
+        if (mounted) {
+          setState(() {
+            _weatherData = null;
+            _weatherError =
+                'Enable location features in Settings to see local weather.';
+            _isLoadingWeather = false;
+          });
+        }
+        return;
+      }
+
+      final permissionStatus = await LocationService.checkPermissions();
+      if (permissionStatus['granted'] != true) {
+        if (mounted) {
+          setState(() {
+            _weatherData = null;
+            _weatherError =
+                permissionStatus['message'] ??
+                'Location permission is required to show weather.';
+            _isLoadingWeather = false;
+          });
+        }
+        return;
+      }
+
       // Get current location
       final locationData = await LocationService.getLocationWithAddress();
-      
+
       if (locationData != null) {
         final latitude = locationData['latitude'];
         final longitude = locationData['longitude'];
-        
+
         // Fetch weather for current location
-        final weather = await WeatherService.getCurrentWeather(latitude, longitude);
-        
+        final weather = await WeatherService.getCurrentWeather(
+          latitude,
+          longitude,
+        );
+
         if (weather != null && mounted) {
           setState(() {
             _weatherData = weather;
@@ -242,8 +273,14 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  margin: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 8,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -252,7 +289,10 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                       ],
                     ),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    border: Border.all(color: UnderwaterTheme.textLight.withOpacity(0.6), width: 2),
+                    border: Border.all(
+                      color: UnderwaterTheme.textLight.withOpacity(0.6),
+                      width: 2,
+                    ),
                     boxShadow: UnderwaterTheme.glowCyan(opacity: 0.2, blur: 12),
                   ),
                   child: Row(
@@ -361,7 +401,10 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 28,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
@@ -374,33 +417,51 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                 ),
                 child: Column(
                   children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        color: AppTheme.colorSecondary.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: UnderwaterTheme.surfaceCyan1.withOpacity(0.6),
-                          width: 3,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
-                            blurRadius: 12,
-                            spreadRadius: 2,
+                    Row(
+                      children: [
+                        Container(
+                          width: 70,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            color: AppTheme.colorSecondary.withOpacity(0.9),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: UnderwaterTheme.surfaceCyan1.withOpacity(
+                                0.6,
+                              ),
+                              width: 3,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: UnderwaterTheme.surfaceCyan1.withOpacity(
+                                  0.3,
+                                ),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: profile.avatarPath != null && profile.avatarPath!.isNotEmpty
-                          ? Image.file(
-                              File(profile.avatarPath!),
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Center(
+                          clipBehavior: Clip.antiAlias,
+                          child:
+                              profile.avatarPath != null &&
+                                  profile.avatarPath!.isNotEmpty
+                              ? Image.file(
+                                  File(profile.avatarPath!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Center(
+                                      child: Text(
+                                        profile.userInitial,
+                                        style: const TextStyle(
+                                          color: AppTheme.colorTextPrimary,
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Center(
                                   child: Text(
                                     profile.userInitial,
                                     style: const TextStyle(
@@ -409,215 +470,211 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                );
-                              },
-                            )
-                          : Center(
-                              child: Text(
-                                profile.userInitial,
-                                style: const TextStyle(
-                                  color: AppTheme.colorTextPrimary,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w700,
                                 ),
-                              ),
-                            ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome Back,',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.5,
-                              shadows: const [
-                                Shadow(
-                                  color: Colors.black38,
-                                  offset: Offset(0, 1),
-                                  blurRadius: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            profile.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black26,
-                                  offset: Offset(0, 1),
-                                  blurRadius: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.location_on,
-                                size: 14,
-                                color: AppTheme.colorAccent.withOpacity(0.9),
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  profile.location,
-                                  style: TextStyle(
-                                    color: AppTheme.colorTextPrimary.withOpacity(0.85),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                'Welcome Back,',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.5,
+                                  shadows: const [
+                                    Shadow(
+                                      color: Colors.black38,
+                                      offset: Offset(0, 1),
+                                      blurRadius: 2,
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                profile.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black26,
+                                      offset: Offset(0, 1),
+                                      blurRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 14,
+                                    color: AppTheme.colorAccent.withOpacity(
+                                      0.9,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      profile.location,
+                                      style: TextStyle(
+                                        color: AppTheme.colorTextPrimary
+                                            .withOpacity(0.85),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            UnderwaterTheme.midPeriwinkle.withOpacity(0.25),
+                            UnderwaterTheme.midLavender.withOpacity(0.2),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: UnderwaterTheme.textLight.withOpacity(0.35),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.baseline,
+                                  textBaseline: TextBaseline.alphabetic,
+                                  children: [
+                                    Text(
+                                      '${profile.dailyStreak}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -1,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black54,
+                                            offset: Offset(0, 2),
+                                            blurRadius: 4,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.local_fire_department,
+                                      color: Colors.white.withOpacity(0.9),
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'DAY STREAK',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 1.5,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.white.withOpacity(0.0),
+                                  Colors.white.withOpacity(0.4),
+                                  Colors.white.withOpacity(0.0),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.baseline,
+                                  textBaseline: TextBaseline.alphabetic,
+                                  children: [
+                                    Text(
+                                      '${profile.weeklyStreak}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -1,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black54,
+                                            offset: Offset(0, 2),
+                                            blurRadius: 4,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.calendar_today,
+                                      color: Colors.white.withOpacity(0.9),
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'WEEK STREAK',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        UnderwaterTheme.midPeriwinkle.withOpacity(0.25),
-                        UnderwaterTheme.midLavender.withOpacity(0.2),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: UnderwaterTheme.textLight.withOpacity(0.35),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
-                              textBaseline: TextBaseline.alphabetic,
-                              children: [
-                                Text(
-                                  '${profile.dailyStreak}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -1,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black54,
-                                        offset: Offset(0, 2),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.local_fire_department,
-                                  color: Colors.white.withOpacity(0.9),
-                                  size: 20,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'DAY STREAK',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 1.5,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.white.withOpacity(0.0),
-                              Colors.white.withOpacity(0.4),
-                              Colors.white.withOpacity(0.0),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
-                              textBaseline: TextBaseline.alphabetic,
-                              children: [
-                                Text(
-                                  '${profile.weeklyStreak}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -1,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black54,
-                                        offset: Offset(0, 2),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.calendar_today,
-                                  color: Colors.white.withOpacity(0.9),
-                                  size: 18,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'WEEK STREAK',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
               ),
             ),
           ),
@@ -677,138 +734,180 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                 ],
               ),
               borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              border: Border.all(color: UnderwaterTheme.textLight.withOpacity(0.35), width: 2),
-            ),
-      child: Column(
-        children: [
-          const Text(
-            'READY FOR TODAY\'S CHALLENGE?',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              shadows: [
-                Shadow(
-                  color: Colors.black38,
-                  offset: Offset(0, 2),
-                  blurRadius: 3,
-                ),
-              ],
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Spin the reel to discover your three target fish species',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 14,
-              shadows: const [
-                Shadow(
-                  color: Colors.black26,
-                  offset: Offset(0, 1),
-                  blurRadius: 2,
-                ),
-              ],
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          // Slot Machine
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  UnderwaterTheme.deepNavy1.withOpacity(0.5),
-                  UnderwaterTheme.deepNavy2.withOpacity(0.6),
-                ],
+              border: Border.all(
+                color: UnderwaterTheme.textLight.withOpacity(0.35),
+                width: 2,
               ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-              border: Border.all(color: UnderwaterTheme.deepPurplePink1.withOpacity(0.5), width: 2),
-              boxShadow: UnderwaterTheme.glowPurple(opacity: 0.15, blur: 16),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Column(
               children: [
-                _buildAnimatedSlotReel(_reel1Controller, 0),
-                const SizedBox(width: 16),
-                _buildAnimatedSlotReel(_reel2Controller, 1),
-                const SizedBox(width: 16),
-                _buildAnimatedSlotReel(_reel3Controller, 2),
+                const Text(
+                  'READY FOR TODAY\'S CHALLENGE?',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black38,
+                        offset: Offset(0, 2),
+                        blurRadius: 3,
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Spin the reel to discover your three target fish species',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                    shadows: const [
+                      Shadow(
+                        color: Colors.black26,
+                        offset: Offset(0, 1),
+                        blurRadius: 2,
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                // Slot Machine
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        UnderwaterTheme.deepNavy1.withOpacity(0.5),
+                        UnderwaterTheme.deepNavy2.withOpacity(0.6),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                    border: Border.all(
+                      color: UnderwaterTheme.deepPurplePink1.withOpacity(0.5),
+                      width: 2,
+                    ),
+                    boxShadow: UnderwaterTheme.glowPurple(
+                      opacity: 0.15,
+                      blur: 16,
+                    ),
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      const spacing = 12.0;
+                      final totalSpacing = spacing * 2;
+                      final reelWidth =
+                          ((constraints.maxWidth - totalSpacing) / 3).clamp(
+                            60.0,
+                            90.0,
+                          );
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildAnimatedSlotReel(
+                            _reel1Controller,
+                            0,
+                            reelWidth,
+                          ),
+                          const SizedBox(width: spacing),
+                          _buildAnimatedSlotReel(
+                            _reel2Controller,
+                            1,
+                            reelWidth,
+                          ),
+                          const SizedBox(width: spacing),
+                          _buildAnimatedSlotReel(
+                            _reel3Controller,
+                            2,
+                            reelWidth,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed:
+                        (_isSpinning || appProvider.userProfile!.baitTokens < 1)
+                        ? null
+                        : _spinSlotMachine,
+                    style:
+                        ElevatedButton.styleFrom(
+                          backgroundColor: UnderwaterTheme.surfaceCyan1,
+                          foregroundColor: UnderwaterTheme.deepNavy2,
+                          disabledBackgroundColor: UnderwaterTheme.deepNavy2
+                              .withOpacity(0.3),
+                          disabledForegroundColor: UnderwaterTheme.textLight
+                              .withOpacity(0.4),
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusMedium,
+                            ),
+                          ),
+                          elevation: 0,
+                          shadowColor: UnderwaterTheme.surfaceCyan1.withOpacity(
+                            0.5,
+                          ),
+                        ).copyWith(
+                          overlayColor: WidgetStateProperty.all(
+                            UnderwaterTheme.surfaceCyan2.withOpacity(0.3),
+                          ),
+                        ),
+                    child: Text(
+                      _isSpinning
+                          ? 'SPINNING...'
+                          : appProvider.userProfile!.baitTokens < 1
+                          ? 'NEED 1 TOKEN'
+                          : 'SPIN TO CAST (1 Token)',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black26,
+                            offset: Offset(0, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.token, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${appProvider.userProfile?.baitTokens ?? 0} Bait Tokens',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        height: 1.0,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black38,
+                            offset: Offset(0, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (_isSpinning || appProvider.userProfile!.baitTokens < 1) 
-                  ? null 
-                  : _spinSlotMachine,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: UnderwaterTheme.surfaceCyan1,
-                foregroundColor: UnderwaterTheme.deepNavy2,
-                disabledBackgroundColor: UnderwaterTheme.deepNavy2.withOpacity(0.3),
-                disabledForegroundColor: UnderwaterTheme.textLight.withOpacity(0.4),
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                ),
-                elevation: 0,
-                shadowColor: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
-              ).copyWith(
-                overlayColor: WidgetStateProperty.all(UnderwaterTheme.surfaceCyan2.withOpacity(0.3)),
-              ),
-              child: Text(
-                _isSpinning 
-                    ? 'SPINNING...' 
-                    : appProvider.userProfile!.baitTokens < 1
-                        ? 'NEED 1 TOKEN'
-                        : 'SPIN TO CAST (1 Token)',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black26,
-                      offset: Offset(0, 1),
-                      blurRadius: 2,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Icon(Icons.token, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                '${appProvider.userProfile?.baitTokens ?? 0} Bait Tokens',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  height: 1.0,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black38,
-                      offset: Offset(0, 1),
-                      blurRadius: 2,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
             ),
           ),
         ),
@@ -816,20 +915,25 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
     );
   }
 
-  Widget _buildAnimatedSlotReel(AnimationController controller, int reelIndex) {
+  Widget _buildAnimatedSlotReel(
+    AnimationController controller,
+    int reelIndex,
+    double reelWidth,
+  ) {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, child) {
         final isSpinning = controller.isAnimating;
         final spinValue = controller.value;
-        
+        final reelHeight = reelWidth * (68 / 90);
+
         // Create a cycling effect through all fish
         final cycleCount = (spinValue * _fishImages.length * 3).floor();
         final currentFishIndex = cycleCount % _fishImages.length;
-        
+
         return Container(
-          width: 90,
-          height: 68,
+          width: reelWidth,
+          height: reelHeight,
           decoration: BoxDecoration(
             color: Colors.black.withOpacity(0.6),
             borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
@@ -842,22 +946,39 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                 // Show cycling fish while spinning
                 if (isSpinning)
                   OverflowBox(
-                    maxHeight: 136,
+                    maxHeight: reelHeight * 2,
                     alignment: Alignment.topCenter,
                     child: Transform.translate(
-                      offset: Offset(0, -68 * (spinValue * _fishImages.length * 3 % 1)),
+                      offset: Offset(
+                        0,
+                        -reelHeight * (spinValue * _fishImages.length * 3 % 1),
+                      ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildFishImage(_fishImages[currentFishIndex]),
-                          _buildFishImage(_fishImages[(currentFishIndex + 1) % _fishImages.length]),
+                          _buildFishImage(
+                            _fishImages[currentFishIndex],
+                            reelWidth,
+                            reelHeight,
+                          ),
+                          _buildFishImage(
+                            _fishImages[(currentFishIndex + 1) %
+                                _fishImages.length],
+                            reelWidth,
+                            reelHeight,
+                          ),
                         ],
                       ),
                     ),
                   )
                 // Show selected fish (either from previous spin or initial random)
-                else if (_selectedFish.isNotEmpty && reelIndex < _selectedFish.length)
-                  _buildFishImage(_selectedFish[reelIndex]),
+                else if (_selectedFish.isNotEmpty &&
+                    reelIndex < _selectedFish.length)
+                  _buildFishImage(
+                    _selectedFish[reelIndex],
+                    reelWidth,
+                    reelHeight,
+                  ),
               ],
             ),
           ),
@@ -865,19 +986,23 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
       },
     );
   }
-  
-  Widget _buildFishImage(String imagePath) {
+
+  Widget _buildFishImage(String imagePath, double width, double height) {
     return SizedBox(
-      width: 90,
-      height: 68,
+      width: width,
+      height: height,
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(width * (8 / 90)),
           child: Image.asset(
             imagePath,
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
-              return const Icon(Icons.set_meal, size: 30, color: AppTheme.colorPrimary);
+              return const Icon(
+                Icons.set_meal,
+                size: 30,
+                color: AppTheme.colorPrimary,
+              );
             },
           ),
         ),
@@ -901,7 +1026,10 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
           ],
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        border: Border.all(color: UnderwaterTheme.textLight.withOpacity(0.4), width: 2),
+        border: Border.all(
+          color: UnderwaterTheme.textLight.withOpacity(0.4),
+          width: 2,
+        ),
         boxShadow: UnderwaterTheme.glowPurple(opacity: 0.2, blur: 20),
       ),
       child: Column(
@@ -920,7 +1048,11 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
               ),
               Row(
                 children: [
-                  const Icon(Icons.timer, color: UnderwaterTheme.surfaceCyan1, size: 20),
+                  const Icon(
+                    Icons.timer,
+                    color: UnderwaterTheme.surfaceCyan1,
+                    size: 20,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     _getTimeRemaining(),
@@ -973,7 +1105,10 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
                   gradient: const LinearGradient(
-                    colors: [UnderwaterTheme.surfaceCyan1, UnderwaterTheme.surfaceCyan2],
+                    colors: [
+                      UnderwaterTheme.surfaceCyan1,
+                      UnderwaterTheme.surfaceCyan2,
+                    ],
                   ),
                   boxShadow: UnderwaterTheme.glowCyan(opacity: 0.4, blur: 8),
                 ),
@@ -981,10 +1116,9 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
             ),
           ),
           const SizedBox(height: 24),
-          ...quest.targetFish.map((fish) => _buildTargetFishCard(
-                fish,
-                quest.isFishCaught(fish.id),
-              )),
+          ...quest.targetFish.map(
+            (fish) => _buildTargetFishCard(fish, quest.isFishCaught(fish.id)),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -993,7 +1127,10 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                   onPressed: () => _handleReshuffle(appProvider),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: UnderwaterTheme.textLight,
-                    side: BorderSide(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.7), width: 2),
+                    side: BorderSide(
+                      color: UnderwaterTheme.surfaceCyan1.withOpacity(0.7),
+                      width: 2,
+                    ),
                     backgroundColor: UnderwaterTheme.deepNavy1.withOpacity(0.5),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -1020,12 +1157,19 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                     );
                   },
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.7), width: 2),
+                    side: BorderSide(
+                      color: UnderwaterTheme.surfaceCyan1.withOpacity(0.7),
+                      width: 2,
+                    ),
                     backgroundColor: UnderwaterTheme.deepNavy1.withOpacity(0.5),
                     foregroundColor: UnderwaterTheme.textLight,
                     padding: EdgeInsets.zero,
                   ),
-                  child: const Icon(Icons.history, size: 20, color: UnderwaterTheme.surfaceCyan1),
+                  child: const Icon(
+                    Icons.history,
+                    size: 20,
+                    color: UnderwaterTheme.surfaceCyan1,
+                  ),
                 ),
               ),
             ],
@@ -1043,7 +1187,7 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: isCaught 
+            colors: isCaught
                 ? [
                     UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
                     UnderwaterTheme.surfaceCyan2.withOpacity(0.2),
@@ -1055,97 +1199,107 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
           ),
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           border: Border.all(
-            color: isCaught 
-                ? UnderwaterTheme.surfaceCyan1 
+            color: isCaught
+                ? UnderwaterTheme.surfaceCyan1
                 : UnderwaterTheme.deepPurplePink1.withOpacity(0.6),
             width: 2,
           ),
-          boxShadow: isCaught 
+          boxShadow: isCaught
               ? UnderwaterTheme.glowCyan(opacity: 0.3, blur: 12)
               : UnderwaterTheme.glowPurple(opacity: 0.2, blur: 8),
         ),
         child: Row(
-        children: [
-          Container(
-            width: 80,
-            height: 60,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  UnderwaterTheme.deepNavy2.withOpacity(0.8),
-                  UnderwaterTheme.cardPurpleMid.withOpacity(0.7),
-                ],
+          children: [
+            Container(
+              width: 80,
+              height: 60,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    UnderwaterTheme.deepNavy2.withOpacity(0.8),
+                    UnderwaterTheme.cardPurpleMid.withOpacity(0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                border: Border.all(
+                  color: UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
+                  width: 1,
+                ),
               ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-              border: Border.all(
-                color: UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
-                width: 1,
+              child: Image.asset(
+                fish.imageAsset,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.waves,
+                    size: 32,
+                    color: AppTheme.colorSecondary,
+                  );
+                },
               ),
             ),
-            child: Image.asset(
-              fish.imageAsset,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.waves,
-                  size: 32,
-                  color: AppTheme.colorSecondary,
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fish.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: UnderwaterTheme.textLight,
-                    shadows: UnderwaterTheme.textShadowLight,
-                  ),
-                ),
-                Text(
-                  fish.type.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: UnderwaterTheme.textCyan,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        UnderwaterTheme.surfaceCyan1,
-                        UnderwaterTheme.surfaceCyan2,
-                      ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fish.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: UnderwaterTheme.textLight,
+                      shadows: UnderwaterTheme.textShadowLight,
                     ),
-                    borderRadius: BorderRadius.circular(4),
-                    boxShadow: UnderwaterTheme.glowCyan(opacity: 0.3, blur: 6),
                   ),
-                  child: Text(
-                    fish.rarity.toUpperCase(),
+                  Text(
+                    fish.type.toUpperCase(),
                     style: const TextStyle(
                       fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: UnderwaterTheme.deepNavy2,
+                      color: UnderwaterTheme.textCyan,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-              ],
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          UnderwaterTheme.surfaceCyan1,
+                          UnderwaterTheme.surfaceCyan2,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                      boxShadow: UnderwaterTheme.glowCyan(
+                        opacity: 0.3,
+                        blur: 6,
+                      ),
+                    ),
+                    child: Text(
+                      fish.rarity.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: UnderwaterTheme.deepNavy2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (isCaught)
-            const Icon(Icons.check_circle, color: UnderwaterTheme.surfaceCyan1, size: 32),
-        ],
+            if (isCaught)
+              const Icon(
+                Icons.check_circle,
+                color: UnderwaterTheme.surfaceCyan1,
+                size: 32,
+              ),
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -1164,10 +1318,7 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                UnderwaterTheme.deepNavy1,
-                UnderwaterTheme.deepNavy2,
-              ],
+              colors: [UnderwaterTheme.deepNavy1, UnderwaterTheme.deepNavy2],
             ),
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             border: Border.all(
@@ -1214,7 +1365,10 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: UnderwaterTheme.textLight),
+                      icon: const Icon(
+                        Icons.close,
+                        color: UnderwaterTheme.textLight,
+                      ),
                       onPressed: () => Navigator.pop(context),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1228,266 +1382,285 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-              // Fish Image
-              AspectRatio(
-                aspectRatio: 4 / 3,
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        UnderwaterTheme.deepNavy2.withOpacity(0.9),
-                        UnderwaterTheme.cardPurpleMid.withOpacity(0.8),
-                      ],
-                    ),
-                  ),
-                  child: Image.asset(
-                    fish.imageAsset,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.waves,
-                        size: 64,
-                        color: UnderwaterTheme.surfaceCyan1,
-                      );
-                    },
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Scientific Name
-                    const Text(
-                      'SCIENTIFIC NAME',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                        color: UnderwaterTheme.textCyan,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      fish.scientificName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontStyle: FontStyle.italic,
-                        color: UnderwaterTheme.textLight,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Type & Rarity
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'TYPE',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
-                                  color: UnderwaterTheme.textCyan,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                fish.type.toUpperCase(),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: UnderwaterTheme.surfaceCyan1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'RARITY',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
-                                  color: UnderwaterTheme.textCyan,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      UnderwaterTheme.surfaceCyan1,
-                                      UnderwaterTheme.surfaceCyan2,
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                  boxShadow: UnderwaterTheme.glowCyan(opacity: 0.3, blur: 6),
-                                ),
-                                child: Text(
-                                  fish.rarity.toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: UnderwaterTheme.deepNavy2,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Description
-                    const Text(
-                      'DESCRIPTION',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                        color: UnderwaterTheme.textCyan,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      fish.description,
-                      style: const TextStyle(
-                        color: UnderwaterTheme.textLight,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Habitat
-                    const Text(
-                      'HABITAT',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                        color: UnderwaterTheme.textCyan,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      fish.habitat,
-                      style: const TextStyle(
-                        color: UnderwaterTheme.textLight,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Best Baits
-                    const Text(
-                      'BEST BAITS',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                        color: UnderwaterTheme.textCyan,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: fish.bestBaits.map((bait) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
+                      // Fish Image
+                      AspectRatio(
+                        aspectRatio: 4 / 3,
+                        child: Container(
+                          width: double.infinity,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                UnderwaterTheme.midPeriwinkle.withOpacity(0.5),
-                                UnderwaterTheme.midLavender.withOpacity(0.4),
+                                UnderwaterTheme.deepNavy2.withOpacity(0.9),
+                                UnderwaterTheme.cardPurpleMid.withOpacity(0.8),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: UnderwaterTheme.surfaceCyan1.withOpacity(0.6),
-                              width: 1.5,
-                            ),
                           ),
-                          child: Text(
-                            bait,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: UnderwaterTheme.textLight,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Depth & Season
-                    Row(
-                      children: [
-                        const Icon(Icons.water, size: 16, color: UnderwaterTheme.surfaceCyan1),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Depth: ${fish.depthRange}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: UnderwaterTheme.textLight,
+                          child: Image.asset(
+                            fish.imageAsset,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.waves,
+                                size: 64,
+                                color: UnderwaterTheme.surfaceCyan1,
+                              );
+                            },
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        const Icon(Icons.calendar_today, size: 16, color: UnderwaterTheme.surfaceCyan1),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            fish.season,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: UnderwaterTheme.textLight,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Scientific Name
+                            const Text(
+                              'SCIENTIFIC NAME',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                                color: UnderwaterTheme.textCyan,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            Text(
+                              fish.scientificName,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                color: UnderwaterTheme.textLight,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Type & Rarity
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'TYPE',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1,
+                                          color: UnderwaterTheme.textCyan,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        fish.type.toUpperCase(),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: UnderwaterTheme.surfaceCyan1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'RARITY',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1,
+                                          color: UnderwaterTheme.textCyan,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              UnderwaterTheme.surfaceCyan1,
+                                              UnderwaterTheme.surfaceCyan2,
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          boxShadow: UnderwaterTheme.glowCyan(
+                                            opacity: 0.3,
+                                            blur: 6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          fish.rarity.toUpperCase(),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: UnderwaterTheme.deepNavy2,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Description
+                            const Text(
+                              'DESCRIPTION',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                                color: UnderwaterTheme.textCyan,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              fish.description,
+                              style: const TextStyle(
+                                color: UnderwaterTheme.textLight,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Habitat
+                            const Text(
+                              'HABITAT',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                                color: UnderwaterTheme.textCyan,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              fish.habitat,
+                              style: const TextStyle(
+                                color: UnderwaterTheme.textLight,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Best Baits
+                            const Text(
+                              'BEST BAITS',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                                color: UnderwaterTheme.textCyan,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: fish.bestBaits.map((bait) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        UnderwaterTheme.midPeriwinkle
+                                            .withOpacity(0.5),
+                                        UnderwaterTheme.midLavender.withOpacity(
+                                          0.4,
+                                        ),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: UnderwaterTheme.surfaceCyan1
+                                          .withOpacity(0.6),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    bait,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: UnderwaterTheme.textLight,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Depth & Season
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.water,
+                                  size: 16,
+                                  color: UnderwaterTheme.surfaceCyan1,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Depth: ${fish.depthRange}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: UnderwaterTheme.textLight,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                const Icon(
+                                  Icons.calendar_today,
+                                  size: 16,
+                                  color: UnderwaterTheme.surfaceCyan1,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    fish.season,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: UnderwaterTheme.textLight,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Difficulty
+                            Row(
+                              children: [
+                                const Text(
+                                  'Difficulty: ',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: UnderwaterTheme.textLight,
+                                  ),
+                                ),
+                                ...List.generate(5, (index) {
+                                  return Icon(
+                                    index < fish.difficultyRating
+                                        ? Icons.star
+                                        : Icons.star_border,
+                                    size: 16,
+                                    color: UnderwaterTheme.surfaceCyan1,
+                                  );
+                                }),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    // Difficulty
-                    Row(
-                      children: [
-                        const Text(
-                          'Difficulty: ',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: UnderwaterTheme.textLight,
-                          ),
-                        ),
-                        ...List.generate(5, (index) {
-                          return Icon(
-                            index < fish.difficultyRating
-                                ? Icons.star
-                                : Icons.star_border,
-                            size: 16,
-                            color: UnderwaterTheme.surfaceCyan1,
-                          );
-                        }),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                      ),
                     ],
                   ),
                 ),
@@ -1513,10 +1686,7 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
             gradient: const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                UnderwaterTheme.deepNavy1,
-                UnderwaterTheme.deepNavy2,
-              ],
+              colors: [UnderwaterTheme.deepNavy1, UnderwaterTheme.deepNavy2],
             ),
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             border: Border.all(
@@ -1547,10 +1717,7 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
               const Text(
                 'This will remove your current quest and return you to the spin machine.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: UnderwaterTheme.textCyan,
-                ),
+                style: TextStyle(fontSize: 14, color: UnderwaterTheme.textCyan),
               ),
               const SizedBox(height: 24),
               Row(
@@ -1562,18 +1729,20 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                         foregroundColor: UnderwaterTheme.textCyan,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMedium,
+                          ),
                           side: BorderSide(
-                            color: UnderwaterTheme.surfaceCyan1.withOpacity(0.4),
+                            color: UnderwaterTheme.surfaceCyan1.withOpacity(
+                              0.4,
+                            ),
                             width: 1.5,
                           ),
                         ),
                       ),
                       child: const Text(
                         'CANCEL',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -1581,24 +1750,25 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: UnderwaterTheme.deepPurplePink1,
-                        foregroundColor: UnderwaterTheme.textLight,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                        ),
-                      ).copyWith(
-                        shadowColor: WidgetStateProperty.all(
-                          UnderwaterTheme.deepPurplePink1.withOpacity(0.5),
-                        ),
-                      ),
+                      style:
+                          ElevatedButton.styleFrom(
+                            backgroundColor: UnderwaterTheme.deepPurplePink1,
+                            foregroundColor: UnderwaterTheme.textLight,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusMedium,
+                              ),
+                            ),
+                          ).copyWith(
+                            shadowColor: WidgetStateProperty.all(
+                              UnderwaterTheme.deepPurplePink1.withOpacity(0.5),
+                            ),
+                          ),
                       child: const Text(
                         'DELETE',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -1659,7 +1829,10 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                       ],
                     ),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    border: Border.all(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.4), width: 2),
+                    border: Border.all(
+                      color: UnderwaterTheme.surfaceCyan1.withOpacity(0.4),
+                      width: 2,
+                    ),
                     boxShadow: UnderwaterTheme.glowCyan(opacity: 0.1, blur: 8),
                   ),
                   child: const Center(
@@ -1676,90 +1849,114 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                 )
               else
                 ...catches.map((catch_) {
-                  final weightStr = catch_.weight != null ? prefs.formatWeight(catch_.weight!) : '';
-                  final lengthStr = catch_.length != null ? prefs.formatLength(catch_.length!) : '';
-                  final statsStr = [weightStr, lengthStr].where((s) => s.isNotEmpty).join(' • ');
-                  
+                  final weightStr = catch_.weight != null
+                      ? prefs.formatWeight(catch_.weight!)
+                      : '';
+                  final lengthStr = catch_.length != null
+                      ? prefs.formatLength(catch_.length!)
+                      : '';
+                  final statsStr = [
+                    weightStr,
+                    lengthStr,
+                  ].where((s) => s.isNotEmpty).join(' • ');
+
                   return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            UnderwaterTheme.midLavender.withOpacity(0.4),
-                            UnderwaterTheme.deepPurplePink1.withOpacity(0.35),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                        border: Border.all(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.4), width: 2),
-                        boxShadow: UnderwaterTheme.glowPurple(opacity: 0.15, blur: 12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          UnderwaterTheme.midLavender.withOpacity(0.4),
+                          UnderwaterTheme.deepPurplePink1.withOpacity(0.35),
+                        ],
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  UnderwaterTheme.deepNavy1.withOpacity(0.5),
-                                  UnderwaterTheme.deepNavy2.withOpacity(0.6),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                              border: Border.all(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.3), width: 1),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusMedium,
+                      ),
+                      border: Border.all(
+                        color: UnderwaterTheme.surfaceCyan1.withOpacity(0.4),
+                        width: 2,
+                      ),
+                      boxShadow: UnderwaterTheme.glowPurple(
+                        opacity: 0.15,
+                        blur: 12,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                UnderwaterTheme.deepNavy1.withOpacity(0.5),
+                                UnderwaterTheme.deepNavy2.withOpacity(0.6),
+                              ],
                             ),
-                            child: catch_.photoPath != null && catch_.photoPath!.isNotEmpty
-                                ? Image.file(
-                                    File(catch_.photoPath!),
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Image.asset(
-                                        'assets/images/empty.png',
-                                        fit: BoxFit.cover,
-                                      );
-                                    },
-                                  )
-                                : Image.asset(
-                                    'assets/images/empty.png',
-                                    fit: BoxFit.cover,
-                                  ),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusSmall,
+                            ),
+                            border: Border.all(
+                              color: UnderwaterTheme.surfaceCyan1.withOpacity(
+                                0.3,
+                              ),
+                              width: 1,
+                            ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  catch_.fishName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
-                                    color: UnderwaterTheme.textLight,
-                                    shadows: UnderwaterTheme.textShadowLight,
-                                  ),
+                          child:
+                              catch_.photoPath != null &&
+                                  catch_.photoPath!.isNotEmpty
+                              ? Image.file(
+                                  File(catch_.photoPath!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Image.asset(
+                                      'assets/images/empty.png',
+                                      fit: BoxFit.cover,
+                                    );
+                                  },
+                                )
+                              : Image.asset(
+                                  'assets/images/empty.png',
+                                  fit: BoxFit.cover,
                                 ),
-                                if (statsStr.isNotEmpty)
-                                  Text(
-                                    statsStr,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: UnderwaterTheme.textCyan,
-                                    ),
-                                  ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                catch_.fishName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: UnderwaterTheme.textLight,
+                                  shadows: UnderwaterTheme.textShadowLight,
+                                ),
+                              ),
+                              if (statsStr.isNotEmpty)
                                 Text(
-                                  DateFormat('MMM d, y').format(catch_.caughtAt),
+                                  statsStr,
                                   style: const TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 14,
                                     color: UnderwaterTheme.textCyan,
                                   ),
                                 ),
-                              ],
-                            ),
+                              Text(
+                                DateFormat('MMM d, y').format(catch_.caughtAt),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: UnderwaterTheme.textCyan,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
+                        ),
+                      ],
+                    ),
+                  );
                 }),
             ],
           ),
@@ -1794,7 +1991,10 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                 ],
               ),
               borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              border: Border.all(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5), width: 2),
+              border: Border.all(
+                color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
+                width: 2,
+              ),
               boxShadow: UnderwaterTheme.glowCyan(opacity: 0.2, blur: 16),
             ),
             child: _isLoadingWeather
@@ -1804,198 +2004,239 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                     ),
                   )
                 : _weatherError != null
-                    ? Column(
+                ? Column(
+                    children: [
+                      const Icon(
+                        Icons.cloud_off,
+                        size: 48,
+                        color: UnderwaterTheme.textCyan,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _weatherError!,
+                        style: const TextStyle(
+                          color: UnderwaterTheme.textCyan,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: _fetchCurrentWeather,
+                        icon: const Icon(
+                          Icons.refresh,
+                          size: 16,
+                          color: UnderwaterTheme.surfaceCyan1,
+                        ),
+                        label: const Text(
+                          'Retry',
+                          style: TextStyle(color: UnderwaterTheme.surfaceCyan1),
+                        ),
+                      ),
+                    ],
+                  )
+                : _weatherData != null
+                ? Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.cloud_off, size: 48, color: UnderwaterTheme.textCyan),
-                          const SizedBox(height: 12),
-                          Text(
-                            _weatherError!,
-                            style: const TextStyle(
-                              color: UnderwaterTheme.textCyan,
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
+                          const SizedBox(width: 40), // Balance space
+                          Column(
+                            children: [
+                              Text(
+                                _weatherData!['icon'],
+                                style: const TextStyle(fontSize: 80),
+                              ),
+                              const SizedBox(height: 8),
+                              Consumer<AppProvider>(
+                                builder: (context, appProvider, child) {
+                                  final temp =
+                                      _weatherData!['temperature'] as double;
+                                  final useMetric =
+                                      appProvider.preferences.useMetric;
+
+                                  return Column(
+                                    children: [
+                                      Text(
+                                        useMetric
+                                            ? '${temp.toStringAsFixed(0)}°C'
+                                            : '${(temp * 9 / 5 + 32).toStringAsFixed(0)}°F',
+                                        style: const TextStyle(
+                                          color: UnderwaterTheme.textLight,
+                                          fontSize: 40,
+                                          fontWeight: FontWeight.w300,
+                                          height: 1.0,
+                                          shadows:
+                                              UnderwaterTheme.textShadowLight,
+                                        ),
+                                      ),
+                                      Text(
+                                        useMetric
+                                            ? '${(temp * 9 / 5 + 32).toStringAsFixed(0)}°F'
+                                            : '${temp.toStringAsFixed(0)}°C',
+                                        style: const TextStyle(
+                                          color: UnderwaterTheme.textCyan,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          TextButton.icon(
-                            onPressed: _fetchCurrentWeather,
-                            icon: const Icon(Icons.refresh, size: 16, color: UnderwaterTheme.surfaceCyan1),
-                            label: const Text(
-                              'Retry',
-                              style: TextStyle(color: UnderwaterTheme.surfaceCyan1),
+                          SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: OutlinedButton(
+                              onPressed: _fetchCurrentWeather,
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                side: BorderSide(
+                                  color: UnderwaterTheme.surfaceCyan1
+                                      .withOpacity(0.7),
+                                  width: 2,
+                                ),
+                                backgroundColor: UnderwaterTheme.deepNavy1
+                                    .withOpacity(0.5),
+                                foregroundColor: UnderwaterTheme.surfaceCyan1,
+                              ),
+                              child: const Icon(
+                                Icons.refresh,
+                                color: UnderwaterTheme.surfaceCyan1,
+                                size: 20,
+                              ),
                             ),
                           ),
                         ],
-                      )
-                    : _weatherData != null
-                        ? Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(width: 40), // Balance space
-                                  Column(
-                                    children: [
-                                      Text(
-                                        _weatherData!['icon'],
-                                        style: const TextStyle(fontSize: 80),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Consumer<AppProvider>(
-                                        builder: (context, appProvider, child) {
-                                          final temp = _weatherData!['temperature'] as double;
-                                          final useMetric = appProvider.preferences.useMetric;
-                                          
-                                          return Column(
-                                            children: [
-                                              Text(
-                                                useMetric
-                                                    ? '${temp.toStringAsFixed(0)}°C'
-                                                    : '${(temp * 9 / 5 + 32).toStringAsFixed(0)}°F',
-                                                style: const TextStyle(
-                                                  color: UnderwaterTheme.textLight,
-                                                  fontSize: 40,
-                                                  fontWeight: FontWeight.w300,
-                                                  height: 1.0,
-                                                  shadows: UnderwaterTheme.textShadowLight,
-                                                ),
-                                              ),
-                                              Text(
-                                                useMetric
-                                                    ? '${(temp * 9 / 5 + 32).toStringAsFixed(0)}°F'
-                                                    : '${temp.toStringAsFixed(0)}°C',
-                                                style: const TextStyle(
-                                                  color: UnderwaterTheme.textCyan,
-                                                  fontSize: 18,
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(
-                                    width: 40,
-                                    height: 40,
-                                    child: OutlinedButton(
-                                      onPressed: _fetchCurrentWeather,
-                                      style: OutlinedButton.styleFrom(
-                                        padding: EdgeInsets.zero,
-                                        side: BorderSide(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.7), width: 2),
-                                        backgroundColor: UnderwaterTheme.deepNavy1.withOpacity(0.5),
-                                        foregroundColor: UnderwaterTheme.surfaceCyan1,
-                                      ),
-                                      child: const Icon(
-                                        Icons.refresh,
-                                        color: UnderwaterTheme.surfaceCyan1,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                _weatherData!['condition'],
-                                style: const TextStyle(
-                                  color: UnderwaterTheme.textLight,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  shadows: UnderwaterTheme.textShadowLight,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.water_drop, size: 16, color: UnderwaterTheme.surfaceCyan1),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${_weatherData!['humidity']}%',
-                                    style: const TextStyle(
-                                      color: UnderwaterTheme.textCyan,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  const Icon(Icons.air, size: 16, color: UnderwaterTheme.surfaceCyan1),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${_weatherData!['windSpeed'].toStringAsFixed(1)} km/h',
-                                    style: const TextStyle(
-                                      color: UnderwaterTheme.textCyan,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
-                                      UnderwaterTheme.surfaceCyan2.withOpacity(0.2),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                                  border: Border.all(color: UnderwaterTheme.surfaceCyan1, width: 2),
-                                  boxShadow: UnderwaterTheme.glowCyan(opacity: 0.3, blur: 8),
-                                ),
-                                child: Text(
-                                  _getFishingConditionText(),
-                                  style: const TextStyle(
-                                    color: UnderwaterTheme.textLight,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    shadows: UnderwaterTheme.textShadowLight,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : Row(
-                            children: [
-                              const Icon(Icons.wb_sunny, size: 48, color: UnderwaterTheme.textLight),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Weather',
-                                      style: TextStyle(
-                                        color: UnderwaterTheme.textLight,
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w700,
-                                        shadows: UnderwaterTheme.textShadowLight,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Loading weather data...',
-                                      style: TextStyle(
-                                        color: UnderwaterTheme.textCyan,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _weatherData!['condition'],
+                        style: const TextStyle(
+                          color: UnderwaterTheme.textLight,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          shadows: UnderwaterTheme.textShadowLight,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.water_drop,
+                            size: 16,
+                            color: UnderwaterTheme.surfaceCyan1,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_weatherData!['humidity']}%',
+                            style: const TextStyle(
+                              color: UnderwaterTheme.textCyan,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          const Icon(
+                            Icons.air,
+                            size: 16,
+                            color: UnderwaterTheme.surfaceCyan1,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_weatherData!['windSpeed'].toStringAsFixed(1)} km/h',
+                            style: const TextStyle(
+                              color: UnderwaterTheme.textCyan,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
+                              UnderwaterTheme.surfaceCyan2.withOpacity(0.2),
                             ],
                           ),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall,
+                          ),
+                          border: Border.all(
+                            color: UnderwaterTheme.surfaceCyan1,
+                            width: 2,
+                          ),
+                          boxShadow: UnderwaterTheme.glowCyan(
+                            opacity: 0.3,
+                            blur: 8,
+                          ),
+                        ),
+                        child: Text(
+                          _getFishingConditionText(),
+                          style: const TextStyle(
+                            color: UnderwaterTheme.textLight,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            shadows: UnderwaterTheme.textShadowLight,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      const Icon(
+                        Icons.wb_sunny,
+                        size: 48,
+                        color: UnderwaterTheme.textLight,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Weather',
+                              style: TextStyle(
+                                color: UnderwaterTheme.textLight,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                shadows: UnderwaterTheme.textShadowLight,
+                              ),
+                            ),
+                            Text(
+                              'Loading weather data...',
+                              style: TextStyle(
+                                color: UnderwaterTheme.textCyan,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),
     );
-  }  String _getFishingConditionText() {
+  }
+
+  String _getFishingConditionText() {
     if (_weatherData == null) return 'Check conditions for fishing';
-    
+
     final temp = _weatherData!['temperature'];
     final condition = _weatherData!['condition'].toLowerCase();
-    
+
     // Temperature-based conditions (Celsius)
     if (temp < 0) {
       return 'Very cold - Ice fishing conditions';
@@ -2011,7 +2252,7 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
     } else if (temp > 30) {
       return 'Hot - Fish deeper waters';
     }
-    
+
     // Condition-based advice
     if (condition.contains('storm') || condition.contains('thunder')) {
       return 'Not safe for fishing - Stay indoors';
@@ -2020,7 +2261,7 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
     } else if (condition.contains('cloud')) {
       return 'Overcast - Good for fishing!';
     }
-    
+
     return 'Check local conditions before heading out';
   }
 

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import '../models/fish_species.dart';
+import '../providers/app_provider.dart';
 import '../services/location_service.dart';
 import '../utils/app_theme.dart';
 
@@ -52,6 +54,27 @@ class _HabitatMapState extends State<HabitatMap> {
     });
 
     try {
+      final appProvider = Provider.of<AppProvider>(context, listen: false);
+      if (!appProvider.preferences.locationServicesEnabled) {
+        if (mounted) {
+          _setFallbackLocation(
+            'Enable location features in Settings to view nearby fishing spots.',
+          );
+        }
+        return;
+      }
+
+      final permissionStatus = await LocationService.checkPermissions();
+      if (permissionStatus['granted'] != true) {
+        if (mounted) {
+          _setFallbackLocation(
+            permissionStatus['message'] ??
+                'Location unavailable. Showing sample fishing spots.',
+          );
+        }
+        return;
+      }
+
       final position = await LocationService.getCurrentLocation();
       if (position != null && mounted) {
         setState(() {
@@ -59,67 +82,82 @@ class _HabitatMapState extends State<HabitatMap> {
           _isLoadingLocation = false;
           _nearbyFishLocations = _generateNearbyFishLocations(position);
         });
+      } else if (mounted) {
+        _setFallbackLocation(
+          'Unable to determine your location. Showing sample fishing spots.',
+        );
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoadingLocation = false;
-          _locationError = 'Unable to get location. Using default location.';
-          // Use default location (San Francisco)
-          _userPosition = Position(
-            latitude: 37.7749,
-            longitude: -122.4194,
-            timestamp: DateTime.now(),
-            accuracy: 0,
-            altitude: 0,
-            heading: 0,
-            speed: 0,
-            speedAccuracy: 0,
-            altitudeAccuracy: 0,
-            headingAccuracy: 0,
-          );
-          _nearbyFishLocations = _generateNearbyFishLocations(_userPosition!);
-        });
+        _setFallbackLocation('Unable to get location. Using default location.');
       }
     }
   }
 
+  void _setFallbackLocation(String message) {
+    final fallbackPosition = Position(
+      latitude: 37.7749,
+      longitude: -122.4194,
+      timestamp: DateTime.now(),
+      accuracy: 0,
+      altitude: 0,
+      heading: 0,
+      speed: 0,
+      speedAccuracy: 0,
+      altitudeAccuracy: 0,
+      headingAccuracy: 0,
+    );
+
+    setState(() {
+      _userPosition = fallbackPosition;
+      _isLoadingLocation = false;
+      _locationError = message;
+      _nearbyFishLocations = _generateNearbyFishLocations(fallbackPosition);
+    });
+  }
+
   List<FishLocationMarker> _generateNearbyFishLocations(Position userPos) {
-    final random = math.Random(widget.fish.id.hashCode); // Consistent results per fish
+    final random = math.Random(
+      widget.fish.id.hashCode,
+    ); // Consistent results per fish
     final List<FishLocationMarker> locations = [];
-    
+
     // Generate 5-10 locations within 10km radius for this specific fish
     final numLocations = 5 + random.nextInt(6);
-    
+
     for (int i = 0; i < numLocations; i++) {
       // Random distance between 0.5km and 10km
       final distance = 0.5 + random.nextDouble() * 9.5;
-      
+
       // Random angle
       final angle = random.nextDouble() * 2 * math.pi;
-      
+
       // Calculate offset (1 degree ≈ 111km)
       final latOffset = (distance / 111.0) * math.cos(angle);
-      final lngOffset = (distance / (111.0 * math.cos(userPos.latitude * math.pi / 180))) * math.sin(angle);
-      
+      final lngOffset =
+          (distance / (111.0 * math.cos(userPos.latitude * math.pi / 180))) *
+          math.sin(angle);
+
       final lat = userPos.latitude + latOffset;
       final lng = userPos.longitude + lngOffset;
-      
+
       // Generate location name based on fish habitat
       final locationNames = _getLocationNames(widget.fish);
       final locationName = locationNames[random.nextInt(locationNames.length)];
-      
-      locations.add(FishLocationMarker(
-        position: LatLng(lat, lng),
-        fish: widget.fish,
-        distanceKm: distance,
-        locationName: locationName,
-      ));
+
+      locations.add(
+        FishLocationMarker(
+          position: LatLng(lat, lng),
+          fish: widget.fish,
+          distanceKm: distance,
+          locationName: locationName,
+        ),
+      );
     }
-    
+
     // Sort by distance
     locations.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
-    
+
     return locations;
   }
 
@@ -158,7 +196,10 @@ class _HabitatMapState extends State<HabitatMap> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final userLatLng = LatLng(_userPosition!.latitude, _userPosition!.longitude);
+    final userLatLng = LatLng(
+      _userPosition!.latitude,
+      _userPosition!.longitude,
+    );
 
     return FlutterMap(
       mapController: _mapController,
@@ -175,7 +216,7 @@ class _HabitatMapState extends State<HabitatMap> {
           userAgentPackageName: 'com.bigbasscatcher.app',
           maxZoom: 19,
         ),
-        
+
         // Fish location markers
         MarkerLayer(
           markers: _nearbyFishLocations.map((location) {
@@ -192,12 +233,11 @@ class _HabitatMapState extends State<HabitatMap> {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isSelected ? AppTheme.colorAccent : AppTheme.colorSecondary,
+                    color: isSelected
+                        ? AppTheme.colorAccent
+                        : AppTheme.colorSecondary,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 3,
-                    ),
+                    border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.3),
@@ -217,7 +257,7 @@ class _HabitatMapState extends State<HabitatMap> {
             );
           }).toList(),
         ),
-        
+
         // User location marker
         MarkerLayer(
           markers: [
@@ -229,10 +269,7 @@ class _HabitatMapState extends State<HabitatMap> {
                 decoration: BoxDecoration(
                   color: AppTheme.colorPrimary,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 4,
-                  ),
+                  border: Border.all(color: Colors.white, width: 4),
                   boxShadow: [
                     BoxShadow(
                       color: AppTheme.colorPrimary.withOpacity(0.5),
@@ -242,11 +279,7 @@ class _HabitatMapState extends State<HabitatMap> {
                   ],
                 ),
                 child: const Center(
-                  child: Icon(
-                    Icons.my_location,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  child: Icon(Icons.my_location, color: Colors.white, size: 24),
                 ),
               ),
             ),
@@ -267,7 +300,11 @@ class _HabitatMapState extends State<HabitatMap> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.info_outline, size: 16, color: AppTheme.colorSecondary),
+            const Icon(
+              Icons.info_outline,
+              size: 16,
+              color: AppTheme.colorSecondary,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -305,10 +342,7 @@ class _HabitatMapState extends State<HabitatMap> {
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: const Center(
-                  child: Text(
-                    '🎣',
-                    style: TextStyle(fontSize: 20),
-                  ),
+                  child: Text('🎣', style: TextStyle(fontSize: 20)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -327,7 +361,11 @@ class _HabitatMapState extends State<HabitatMap> {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.location_on, size: 14, color: AppTheme.colorAccent),
+                        const Icon(
+                          Icons.location_on,
+                          size: 14,
+                          color: AppTheme.colorAccent,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${_selectedLocation!.distanceKm.toStringAsFixed(1)} km away',
@@ -452,7 +490,7 @@ class _HabitatMapState extends State<HabitatMap> {
           ],
         ),
         const SizedBox(height: 8),
-        
+
         if (_isLoadingLocation)
           Container(
             height: 300,
@@ -489,7 +527,7 @@ class _HabitatMapState extends State<HabitatMap> {
             child: Stack(
               children: [
                 _buildMap(),
-                
+
                 // Legend overlay
                 Positioned(
                   top: 8,
@@ -514,14 +552,24 @@ class _HabitatMapState extends State<HabitatMap> {
                               decoration: BoxDecoration(
                                 color: AppTheme.colorPrimary,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                               ),
-                              child: const Icon(Icons.my_location, size: 8, color: Colors.white),
+                              child: const Icon(
+                                Icons.my_location,
+                                size: 8,
+                                color: Colors.white,
+                              ),
                             ),
                             const SizedBox(width: 6),
                             const Text(
                               'You',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -535,16 +583,25 @@ class _HabitatMapState extends State<HabitatMap> {
                               decoration: BoxDecoration(
                                 color: AppTheme.colorSecondary,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                               ),
                               child: const Center(
-                                child: Text('🎣', style: TextStyle(fontSize: 8)),
+                                child: Text(
+                                  '🎣',
+                                  style: TextStyle(fontSize: 8),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 6),
                             Text(
                               widget.fish.name,
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -555,10 +612,10 @@ class _HabitatMapState extends State<HabitatMap> {
               ],
             ),
           ),
-        
+
         const SizedBox(height: 8),
         _buildLocationInfo(),
-        
+
         if (_locationError != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -570,7 +627,11 @@ class _HabitatMapState extends State<HabitatMap> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber, size: 16, color: Colors.orange),
+                  const Icon(
+                    Icons.warning_amber,
+                    size: 16,
+                    color: Colors.orange,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

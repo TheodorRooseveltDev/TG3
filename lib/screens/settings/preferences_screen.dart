@@ -5,6 +5,7 @@ import '../../providers/app_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/underwater_theme.dart';
 import '../../widgets/frosted_app_bar.dart';
+import '../../services/location_service.dart';
 
 class PreferencesScreen extends StatelessWidget {
   const PreferencesScreen({super.key});
@@ -14,9 +15,7 @@ class PreferencesScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: const FrostedAppBar(
-        title: 'PREFERENCES',
-      ),
+      appBar: const FrostedAppBar(title: 'PREFERENCES'),
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
@@ -27,7 +26,7 @@ class PreferencesScreen extends StatelessWidget {
         child: Consumer<AppProvider>(
           builder: (context, appProvider, child) {
             final prefs = appProvider.preferences;
-            
+
             return LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
@@ -37,7 +36,10 @@ class PreferencesScreen extends StatelessWidget {
                     ),
                     child: Padding(
                       padding: EdgeInsets.only(
-                        top: MediaQuery.of(context).padding.top + kToolbarHeight - 32,
+                        top:
+                            MediaQuery.of(context).padding.top +
+                            kToolbarHeight -
+                            32,
                         left: 16,
                         right: 16,
                         bottom: 16,
@@ -45,171 +47,375 @@ class PreferencesScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                  // Units Section
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              UnderwaterTheme.deepNavy1.withOpacity(0.7),
-                              UnderwaterTheme.deepNavy2.withOpacity(0.8),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                          border: Border.all(
-                            color: UnderwaterTheme.surfaceCyan1.withOpacity(0.4),
-                            width: 2,
-                          ),
-                          boxShadow: UnderwaterTheme.glowCyan(opacity: 0.15, blur: 16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              'UNITS',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: UnderwaterTheme.textCyan.withOpacity(0.9),
-                                letterSpacing: 1.2,
-                                shadows: UnderwaterTheme.textShadowLight,
-                              ),
+                          // Units Section
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusLarge,
                             ),
-                            const SizedBox(height: 16),
-                            Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    UnderwaterTheme.deepNavy2.withOpacity(0.6),
-                                    UnderwaterTheme.cardPurpleMid.withOpacity(0.5),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      UnderwaterTheme.deepNavy1.withOpacity(
+                                        0.7,
+                                      ),
+                                      UnderwaterTheme.deepNavy2.withOpacity(
+                                        0.8,
+                                      ),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusLarge,
+                                  ),
+                                  border: Border.all(
+                                    color: UnderwaterTheme.surfaceCyan1
+                                        .withOpacity(0.4),
+                                    width: 2,
+                                  ),
+                                  boxShadow: UnderwaterTheme.glowCyan(
+                                    opacity: 0.15,
+                                    blur: 16,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'UNITS',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: UnderwaterTheme.textCyan
+                                            .withOpacity(0.9),
+                                        letterSpacing: 1.2,
+                                        shadows:
+                                            UnderwaterTheme.textShadowLight,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            UnderwaterTheme.deepNavy2
+                                                .withOpacity(0.6),
+                                            UnderwaterTheme.cardPurpleMid
+                                                .withOpacity(0.5),
+                                          ],
+                                        ),
+                                        border: Border.all(
+                                          color: UnderwaterTheme.surfaceCyan1
+                                              .withOpacity(0.4),
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusMedium,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          _buildSwitchTile(
+                                            icon: Icons.thermostat,
+                                            title: 'Use Metric Units',
+                                            subtitle: prefs.useMetric
+                                                ? 'Celsius (°C), Kilograms (kg), Centimeters (cm)'
+                                                : 'Fahrenheit (°F), Pounds (lbs), Inches (in)',
+                                            value: prefs.useMetric,
+                                            onChanged: (value) {
+                                              appProvider.updatePreferences(
+                                                prefs.copyWith(
+                                                  useMetric: value,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                border: Border.all(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.4), width: 2),
-                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                               ),
-                              child: Column(
-                                children: [
-                                  _buildSwitchTile(
-                                    icon: Icons.thermostat,
-                                    title: 'Use Metric Units',
-                                    subtitle: prefs.useMetric 
-                                        ? 'Celsius (°C), Kilograms (kg), Centimeters (cm)'
-                                        : 'Fahrenheit (°F), Pounds (lbs), Inches (in)',
-                                    value: prefs.useMetric,
-                                    onChanged: (value) {
-                                      appProvider.updatePreferences(
-                                        prefs.copyWith(useMetric: value),
-                                      );
-                                    },
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Location Section
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusLarge,
+                            ),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      UnderwaterTheme.deepNavy1.withOpacity(
+                                        0.7,
+                                      ),
+                                      UnderwaterTheme.deepNavy2.withOpacity(
+                                        0.8,
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Experience Section
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              UnderwaterTheme.deepNavy1.withOpacity(0.7),
-                              UnderwaterTheme.deepNavy2.withOpacity(0.8),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                          border: Border.all(
-                            color: UnderwaterTheme.surfaceCyan1.withOpacity(0.4),
-                            width: 2,
-                          ),
-                          boxShadow: UnderwaterTheme.glowCyan(opacity: 0.15, blur: 16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              'EXPERIENCE',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: UnderwaterTheme.textCyan.withOpacity(0.9),
-                                letterSpacing: 1.2,
-                                shadows: UnderwaterTheme.textShadowLight,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    UnderwaterTheme.deepNavy2.withOpacity(0.6),
-                                    UnderwaterTheme.cardPurpleMid.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusLarge,
+                                  ),
+                                  border: Border.all(
+                                    color: UnderwaterTheme.surfaceCyan1
+                                        .withOpacity(0.4),
+                                    width: 2,
+                                  ),
+                                  boxShadow: UnderwaterTheme.glowCyan(
+                                    opacity: 0.15,
+                                    blur: 16,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'LOCATION',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: UnderwaterTheme.textCyan
+                                            .withOpacity(0.9),
+                                        letterSpacing: 1.2,
+                                        shadows:
+                                            UnderwaterTheme.textShadowLight,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            UnderwaterTheme.deepNavy2
+                                                .withOpacity(0.6),
+                                            UnderwaterTheme.cardPurpleMid
+                                                .withOpacity(0.5),
+                                          ],
+                                        ),
+                                        border: Border.all(
+                                          color: UnderwaterTheme.surfaceCyan1
+                                              .withOpacity(0.4),
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusMedium,
+                                        ),
+                                      ),
+                                      child: _buildSwitchTile(
+                                        icon: Icons.location_on,
+                                        title: 'Allow Location Features',
+                                        subtitle:
+                                            'Enable to autofill catches and show local weather',
+                                        value: prefs.locationServicesEnabled,
+                                        onChanged: (value) async {
+                                          final messenger =
+                                              ScaffoldMessenger.of(context);
+                                          if (!value) {
+                                            appProvider.updatePreferences(
+                                              prefs.copyWith(
+                                                locationServicesEnabled: false,
+                                              ),
+                                            );
+                                            messenger.showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Location features disabled.',
+                                                ),
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
+                                            return;
+                                          }
+
+                                          appProvider.updatePreferences(
+                                            prefs.copyWith(
+                                              locationServicesEnabled: true,
+                                            ),
+                                          );
+
+                                          final permissionStatus =
+                                              await LocationService.checkPermissions();
+                                          if (permissionStatus['granted'] ==
+                                              true) {
+                                            messenger.showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Location features enabled.',
+                                                ),
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
+                                          } else {
+                                            final message =
+                                                permissionStatus['message']
+                                                    as String? ??
+                                                'Location access is currently unavailable.';
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  '$message You will be asked when you use a location field.',
+                                                ),
+                                                duration: const Duration(
+                                                  seconds: 4,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                border: Border.all(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.4), width: 2),
-                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                              ),
-                              child: Column(
-                                children: [
-                                  _buildSwitchTile(
-                                    icon: Icons.vibration,
-                                    title: 'Haptic Feedback',
-                                    subtitle: 'Feel vibrations on important actions',
-                                    value: prefs.hapticsEnabled,
-                                    onChanged: (value) {
-                                      appProvider.updatePreferences(
-                                        prefs.copyWith(hapticsEnabled: value),
-                                      );
-                                    },
-                                  ),
-                                  Divider(height: 1, color: UnderwaterTheme.surfaceCyan1.withOpacity(0.3), thickness: 1),
-                                  _buildSwitchTile(
-                                    icon: Icons.volume_up,
-                                    title: 'Sound Effects',
-                                    subtitle: 'Play sounds for actions',
-                                    value: prefs.soundEnabled,
-                                    onChanged: (value) {
-                                      appProvider.updatePreferences(
-                                        prefs.copyWith(soundEnabled: value),
-                                      );
-                                    },
-                                  ),
-                                  Divider(height: 1, color: UnderwaterTheme.surfaceCyan1.withOpacity(0.3), thickness: 1),
-                                  _buildSwitchTile(
-                                    icon: Icons.notifications,
-                                    title: 'Notifications',
-                                    subtitle: 'Get notified about quests and achievements',
-                                    value: prefs.notificationsEnabled,
-                                    onChanged: (value) {
-                                      appProvider.updatePreferences(
-                                        prefs.copyWith(notificationsEnabled: value),
-                                      );
-                                    },
-                                  ),
-                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Experience Section
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusLarge,
+                            ),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      UnderwaterTheme.deepNavy1.withOpacity(
+                                        0.7,
+                                      ),
+                                      UnderwaterTheme.deepNavy2.withOpacity(
+                                        0.8,
+                                      ),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusLarge,
+                                  ),
+                                  border: Border.all(
+                                    color: UnderwaterTheme.surfaceCyan1
+                                        .withOpacity(0.4),
+                                    width: 2,
+                                  ),
+                                  boxShadow: UnderwaterTheme.glowCyan(
+                                    opacity: 0.15,
+                                    blur: 16,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'EXPERIENCE',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: UnderwaterTheme.textCyan
+                                            .withOpacity(0.9),
+                                        letterSpacing: 1.2,
+                                        shadows:
+                                            UnderwaterTheme.textShadowLight,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            UnderwaterTheme.deepNavy2
+                                                .withOpacity(0.6),
+                                            UnderwaterTheme.cardPurpleMid
+                                                .withOpacity(0.5),
+                                          ],
+                                        ),
+                                        border: Border.all(
+                                          color: UnderwaterTheme.surfaceCyan1
+                                              .withOpacity(0.4),
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusMedium,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          _buildSwitchTile(
+                                            icon: Icons.vibration,
+                                            title: 'Haptic Feedback',
+                                            subtitle:
+                                                'Feel vibrations on important actions',
+                                            value: prefs.hapticsEnabled,
+                                            onChanged: (value) {
+                                              appProvider.updatePreferences(
+                                                prefs.copyWith(
+                                                  hapticsEnabled: value,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          Divider(
+                                            height: 1,
+                                            color: UnderwaterTheme.surfaceCyan1
+                                                .withOpacity(0.3),
+                                            thickness: 1,
+                                          ),
+                                          _buildSwitchTile(
+                                            icon: Icons.volume_up,
+                                            title: 'Sound Effects',
+                                            subtitle: 'Play sounds for actions',
+                                            value: prefs.soundEnabled,
+                                            onChanged: (value) {
+                                              appProvider.updatePreferences(
+                                                prefs.copyWith(
+                                                  soundEnabled: value,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          Divider(
+                                            height: 1,
+                                            color: UnderwaterTheme.surfaceCyan1
+                                                .withOpacity(0.3),
+                                            thickness: 1,
+                                          ),
+                                          _buildSwitchTile(
+                                            icon: Icons.notifications,
+                                            title: 'Notifications',
+                                            subtitle:
+                                                'Get notified about quests and achievements',
+                                            value: prefs.notificationsEnabled,
+                                            onChanged: (value) {
+                                              appProvider.updatePreferences(
+                                                prefs.copyWith(
+                                                  notificationsEnabled: value,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -243,10 +449,7 @@ class PreferencesScreen extends StatelessWidget {
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(
-          fontSize: 12,
-          color: UnderwaterTheme.textCyan,
-        ),
+        style: const TextStyle(fontSize: 12, color: UnderwaterTheme.textCyan),
       ),
       value: value,
       onChanged: onChanged,

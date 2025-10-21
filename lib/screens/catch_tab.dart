@@ -62,7 +62,7 @@ class _CatchTabState extends State<CatchTab> {
   Future<void> _pickImage(ImageSource source) async {
     try {
       HapticFeedback.lightImpact();
-      
+
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: source,
@@ -79,9 +79,9 @@ class _CatchTabState extends State<CatchTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
       }
     }
   }
@@ -109,7 +109,10 @@ class _CatchTabState extends State<CatchTab> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: UnderwaterTheme.surfaceCyan1),
+              leading: const Icon(
+                Icons.camera_alt,
+                color: UnderwaterTheme.surfaceCyan1,
+              ),
               title: const Text(
                 'Camera',
                 style: TextStyle(color: UnderwaterTheme.textLight),
@@ -120,7 +123,10 @@ class _CatchTabState extends State<CatchTab> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library, color: UnderwaterTheme.surfaceCyan1),
+              leading: const Icon(
+                Icons.photo_library,
+                color: UnderwaterTheme.surfaceCyan1,
+              ),
               title: const Text(
                 'Gallery',
                 style: TextStyle(color: UnderwaterTheme.textLight),
@@ -137,19 +143,36 @@ class _CatchTabState extends State<CatchTab> {
   }
 
   Future<void> _captureLocation() async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    if (!appProvider.preferences.locationServicesEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enable location features in Settings to capture your fishing spot automatically.',
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoadingLocation = true;
     });
 
     try {
       // First check permissions explicitly
-      final permissionCheck = await LocationService.checkPermissions();
-      
+      final permissionCheck = await LocationService.checkPermissions(
+        requestPermission: true,
+      );
+
       if (permissionCheck['granted'] != true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(permissionCheck['message'] ?? 'Location permission denied'),
+              content: Text(
+                permissionCheck['message'] ?? 'Location permission denied',
+              ),
               duration: const Duration(seconds: 4),
               action: SnackBarAction(
                 label: 'Settings',
@@ -165,9 +188,9 @@ class _CatchTabState extends State<CatchTab> {
         });
         return;
       }
-      
+
       final locationData = await LocationService.getLocationWithAddress();
-      
+
       if (locationData != null) {
         setState(() {
           _latitude = locationData['latitude'];
@@ -201,7 +224,9 @@ class _CatchTabState extends State<CatchTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error capturing location: ${e.toString().split(':').last.trim()}'),
+            content: Text(
+              'Error capturing location: ${e.toString().split(':').last.trim()}',
+            ),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -221,17 +246,22 @@ class _CatchTabState extends State<CatchTab> {
 
     try {
       print('Fetching weather for location: $_latitude, $_longitude');
-      final weather = await WeatherService.getCurrentWeather(_latitude!, _longitude!);
-      
+      final weather = await WeatherService.getCurrentWeather(
+        _latitude!,
+        _longitude!,
+      );
+
       if (weather != null) {
         setState(() {
           _weatherData = weather;
         });
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${weather['icon']} Weather updated: ${weather['condition']}'),
+              content: Text(
+                '${weather['icon']} Weather updated: ${weather['condition']}',
+              ),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -241,7 +271,9 @@ class _CatchTabState extends State<CatchTab> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Could not fetch weather data. Please check your internet connection.'),
+              content: Text(
+                'Could not fetch weather data. Please check your internet connection.',
+              ),
               duration: Duration(seconds: 3),
             ),
           );
@@ -252,7 +284,9 @@ class _CatchTabState extends State<CatchTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Weather unavailable: ${e.toString().split(':').last.trim()}'),
+            content: Text(
+              'Weather unavailable: ${e.toString().split(':').last.trim()}',
+            ),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -262,7 +296,7 @@ class _CatchTabState extends State<CatchTab> {
 
   void _showFishSelectionDialog() {
     final allFish = FishDatabase.allFish;
-    
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -277,10 +311,7 @@ class _CatchTabState extends State<CatchTab> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                UnderwaterTheme.deepNavy1,
-                UnderwaterTheme.deepNavy2,
-              ],
+              colors: [UnderwaterTheme.deepNavy1, UnderwaterTheme.deepNavy2],
             ),
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             border: Border.all(
@@ -343,9 +374,13 @@ class _CatchTabState extends State<CatchTab> {
                               UnderwaterTheme.cardPurpleMid.withOpacity(0.7),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall,
+                          ),
                           border: Border.all(
-                            color: UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
+                            color: UnderwaterTheme.surfaceCyan1.withOpacity(
+                              0.3,
+                            ),
                             width: 1,
                           ),
                         ),
@@ -431,10 +466,7 @@ class _CatchTabState extends State<CatchTab> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                UnderwaterTheme.deepNavy1,
-                UnderwaterTheme.deepNavy2,
-              ],
+              colors: [UnderwaterTheme.deepNavy1, UnderwaterTheme.deepNavy2],
             ),
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             border: Border.all(
@@ -482,7 +514,9 @@ class _CatchTabState extends State<CatchTab> {
                           color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
                           width: 2,
                         ),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                       child: Image.asset(
                         fish.imageAsset,
@@ -521,7 +555,10 @@ class _CatchTabState extends State<CatchTab> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: UnderwaterTheme.textLight),
+                      icon: const Icon(
+                        Icons.close,
+                        color: UnderwaterTheme.textLight,
+                      ),
                       onPressed: () => Navigator.pop(context),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -544,15 +581,24 @@ class _CatchTabState extends State<CatchTab> {
                             gradient: LinearGradient(
                               colors: [
                                 UnderwaterTheme.midLavender.withOpacity(0.3),
-                                UnderwaterTheme.deepPurplePink1.withOpacity(0.25),
+                                UnderwaterTheme.deepPurplePink1.withOpacity(
+                                  0.25,
+                                ),
                               ],
                             ),
                             border: Border.all(
-                              color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
+                              color: UnderwaterTheme.surfaceCyan1.withOpacity(
+                                0.5,
+                              ),
                               width: 2,
                             ),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            boxShadow: UnderwaterTheme.glowCyan(opacity: 0.15, blur: 12),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusMedium,
+                            ),
+                            boxShadow: UnderwaterTheme.glowCyan(
+                              opacity: 0.15,
+                              blur: 12,
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -592,7 +638,10 @@ class _CatchTabState extends State<CatchTab> {
                                       ),
                                     ),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
                                         gradient: const LinearGradient(
                                           colors: [
@@ -601,7 +650,10 @@ class _CatchTabState extends State<CatchTab> {
                                           ],
                                         ),
                                         borderRadius: BorderRadius.circular(4),
-                                        boxShadow: UnderwaterTheme.glowCyan(opacity: 0.3, blur: 6),
+                                        boxShadow: UnderwaterTheme.glowCyan(
+                                          opacity: 0.3,
+                                          blur: 6,
+                                        ),
                                       ),
                                       child: Text(
                                         fish.rarity.toUpperCase(),
@@ -645,12 +697,12 @@ class _CatchTabState extends State<CatchTab> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Habitat Map
                         HabitatMap(fish: fish),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Select Button
                         SizedBox(
                           width: double.infinity,
@@ -670,16 +722,25 @@ class _CatchTabState extends State<CatchTab> {
                                 letterSpacing: 1.2,
                               ),
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: UnderwaterTheme.surfaceCyan1,
-                              foregroundColor: UnderwaterTheme.deepNavy2,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                              ),
-                            ).copyWith(
-                              overlayColor: WidgetStateProperty.all(UnderwaterTheme.surfaceCyan2.withOpacity(0.3)),
-                            ),
+                            style:
+                                ElevatedButton.styleFrom(
+                                  backgroundColor: UnderwaterTheme.surfaceCyan1,
+                                  foregroundColor: UnderwaterTheme.deepNavy2,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusMedium,
+                                    ),
+                                  ),
+                                ).copyWith(
+                                  overlayColor: WidgetStateProperty.all(
+                                    UnderwaterTheme.surfaceCyan2.withOpacity(
+                                      0.3,
+                                    ),
+                                  ),
+                                ),
                           ),
                         ),
                       ],
@@ -709,7 +770,7 @@ class _CatchTabState extends State<CatchTab> {
     // Parse weight and length and convert to metric for storage
     final provider = Provider.of<AppProvider>(context, listen: false);
     final useMetric = provider.preferences.useMetric;
-    
+
     final weightInput = double.tryParse(_weightController.text);
     final lengthInput = double.tryParse(_lengthController.text);
 
@@ -719,15 +780,19 @@ class _CatchTabState extends State<CatchTab> {
       );
       return;
     }
-    
+
     // Convert to metric if user entered imperial units (for consistent storage)
-    final weight = useMetric ? weightInput : weightInput / 2.20462; // Convert lbs to kg if needed
-    final length = useMetric ? lengthInput : lengthInput * 2.54; // Convert inches to cm if needed
+    final weight = useMetric
+        ? weightInput
+        : weightInput / 2.20462; // Convert lbs to kg if needed
+    final length = useMetric
+        ? lengthInput
+        : lengthInput * 2.54; // Convert inches to cm if needed
 
     // Build weather conditions string
     String? weatherConditions;
     if (_weatherData != null) {
-      weatherConditions = 
+      weatherConditions =
           '${_weatherData!['condition']} • ${_weatherData!['temperature'].toStringAsFixed(1)}°C • '
           'Wind: ${_weatherData!['windSpeed'].toStringAsFixed(1)} km/h • '
           'Humidity: ${_weatherData!['humidity']}%';
@@ -741,8 +806,8 @@ class _CatchTabState extends State<CatchTab> {
       photoPath: _imageFile?.path,
       weight: weight,
       length: length,
-      location: _locationController.text.isNotEmpty 
-          ? _locationController.text 
+      location: _locationController.text.isNotEmpty
+          ? _locationController.text
           : 'Unknown location',
       latitude: _latitude,
       longitude: _longitude,
@@ -801,8 +866,14 @@ class _CatchTabState extends State<CatchTab> {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  margin: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 8,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -810,7 +881,10 @@ class _CatchTabState extends State<CatchTab> {
                         UnderwaterTheme.surfaceCyan2.withOpacity(0.2),
                       ],
                     ),
-                    border: Border.all(color: UnderwaterTheme.textLight.withOpacity(0.6), width: 2),
+                    border: Border.all(
+                      color: UnderwaterTheme.textLight.withOpacity(0.6),
+                      width: 2,
+                    ),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                     boxShadow: UnderwaterTheme.glowCyan(opacity: 0.2, blur: 12),
                   ),
@@ -880,453 +954,543 @@ class _CatchTabState extends State<CatchTab> {
               ),
             ),
             child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                UnderwaterTheme.deepNavy1.withOpacity(0.7),
-                UnderwaterTheme.deepNavy2.withOpacity(0.8),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-            border: Border.all(
-              color: UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
-              width: 2,
-            ),
-            boxShadow: UnderwaterTheme.glowCyan(opacity: 0.15, blur: 16),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Photo Upload Section
-              GestureDetector(
-                onTap: _showImageSourceDialog,
-                child: Container(
-                  width: double.infinity,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        UnderwaterTheme.deepNavy1.withOpacity(0.4),
-                        UnderwaterTheme.deepNavy2.withOpacity(0.5),
-                      ],
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          UnderwaterTheme.deepNavy1.withOpacity(0.7),
+                          UnderwaterTheme.deepNavy2.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                      border: Border.all(
+                        color: UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
+                        width: 2,
+                      ),
+                      boxShadow: UnderwaterTheme.glowCyan(
+                        opacity: 0.15,
+                        blur: 16,
+                      ),
                     ),
-                    border: Border.all(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5), width: 2),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    boxShadow: UnderwaterTheme.glowCyan(opacity: 0.15, blur: 12),
-                  ),
-                  child: _imageFile != null
-                      ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.file(
-                              File(_imageFile!.path),
-                              fit: BoxFit.cover,
-                            ),
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: IconButton(
-                                icon: const Icon(Icons.close, color: Colors.white),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: Colors.black54,
+                    padding: const EdgeInsets.all(20),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Photo Upload Section
+                          GestureDetector(
+                            onTap: _showImageSourceDialog,
+                            child: Container(
+                              width: double.infinity,
+                              height: 250,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    UnderwaterTheme.deepNavy1.withOpacity(0.4),
+                                    UnderwaterTheme.deepNavy2.withOpacity(0.5),
+                                  ],
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    _imageFile = null;
-                                  });
-                                },
+                                border: Border.all(
+                                  color: UnderwaterTheme.surfaceCyan1
+                                      .withOpacity(0.5),
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusMedium,
+                                ),
+                                boxShadow: UnderwaterTheme.glowCyan(
+                                  opacity: 0.15,
+                                  blur: 12,
+                                ),
                               ),
+                              child: _imageFile != null
+                                  ? Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        Image.file(
+                                          File(_imageFile!.path),
+                                          fit: BoxFit.cover,
+                                        ),
+                                        Positioned(
+                                          top: 8,
+                                          right: 8,
+                                          child: IconButton(
+                                            icon: const Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                            ),
+                                            style: IconButton.styleFrom(
+                                              backgroundColor: Colors.black54,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                _imageFile = null;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : const Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.camera_alt,
+                                          size: 64,
+                                          color: UnderwaterTheme.surfaceCyan1,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Tap to add photo',
+                                          style: TextStyle(
+                                            color: UnderwaterTheme.textLight,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            shadows:
+                                                UnderwaterTheme.textShadowLight,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          '(Optional)',
+                                          style: TextStyle(
+                                            color: UnderwaterTheme.textCyan,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                             ),
-                          ],
-                        )
-                      : const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.camera_alt, size: 64, color: UnderwaterTheme.surfaceCyan1),
-                            SizedBox(height: 8),
-                            Text(
-                              'Tap to add photo',
-                              style: TextStyle(
-                                color: UnderwaterTheme.textLight,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                shadows: UnderwaterTheme.textShadowLight,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              '(Optional)',
-                              style: TextStyle(
-                                color: UnderwaterTheme.textCyan,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Fish Species Selection
-              const Text(
-                'FISH SPECIES *',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                  color: UnderwaterTheme.textLight,
-                  shadows: UnderwaterTheme.textShadowLight,
-                ),
-              ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _showFishSelectionDialog,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        UnderwaterTheme.deepNavy1.withOpacity(0.5),
-                        UnderwaterTheme.deepNavy2.withOpacity(0.6),
-                      ],
-                    ),
-                    border: Border.all(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5), width: 2),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    boxShadow: UnderwaterTheme.glowCyan(opacity: 0.1, blur: 8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.phishing,
-                        color: _selectedFish != null
-                            ? UnderwaterTheme.surfaceCyan1
-                            : UnderwaterTheme.textCyan,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _selectedFish?.name ?? 'Select fish species',
-                          style: TextStyle(
-                            color: _selectedFish != null
-                                ? UnderwaterTheme.textLight
-                                : UnderwaterTheme.textCyan,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
+
+                          const SizedBox(height: 24),
+
+                          // Fish Species Selection
+                          const Text(
+                            'FISH SPECIES *',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                              color: UnderwaterTheme.textLight,
+                              shadows: UnderwaterTheme.textShadowLight,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: _showFishSelectionDialog,
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    UnderwaterTheme.deepNavy1.withOpacity(0.5),
+                                    UnderwaterTheme.deepNavy2.withOpacity(0.6),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: UnderwaterTheme.surfaceCyan1
+                                      .withOpacity(0.5),
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusMedium,
+                                ),
+                                boxShadow: UnderwaterTheme.glowCyan(
+                                  opacity: 0.1,
+                                  blur: 8,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.phishing,
+                                    color: _selectedFish != null
+                                        ? UnderwaterTheme.surfaceCyan1
+                                        : UnderwaterTheme.textCyan,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _selectedFish?.name ??
+                                          'Select fish species',
+                                      style: TextStyle(
+                                        color: _selectedFish != null
+                                            ? UnderwaterTheme.textLight
+                                            : UnderwaterTheme.textCyan,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    color: UnderwaterTheme.surfaceCyan1,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Weight and Length Row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Consumer<AppProvider>(
+                                  builder: (context, appProvider, child) {
+                                    final useMetric =
+                                        appProvider.preferences.useMetric;
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          useMetric
+                                              ? 'WEIGHT (KG) *'
+                                              : 'WEIGHT (LBS) *',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 1,
+                                            color: UnderwaterTheme.textLight,
+                                            shadows:
+                                                UnderwaterTheme.textShadowLight,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        TextFormField(
+                                          controller: _weightController,
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter.allow(
+                                              RegExp(r'^\d*\.?\d*'),
+                                            ),
+                                          ],
+                                          decoration: const InputDecoration(
+                                            hintText: '0.0',
+                                            prefixIcon: Icon(Icons.scale),
+                                          ),
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Required';
+                                            }
+                                            if (double.tryParse(value) ==
+                                                null) {
+                                              return 'Invalid';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Consumer<AppProvider>(
+                                  builder: (context, appProvider, child) {
+                                    final useMetric =
+                                        appProvider.preferences.useMetric;
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          useMetric
+                                              ? 'LENGTH (CM) *'
+                                              : 'LENGTH (IN) *',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 1,
+                                            color: UnderwaterTheme.textLight,
+                                            shadows:
+                                                UnderwaterTheme.textShadowLight,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        TextFormField(
+                                          controller: _lengthController,
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter.allow(
+                                              RegExp(r'^\d*\.?\d*'),
+                                            ),
+                                          ],
+                                          decoration: const InputDecoration(
+                                            hintText: '0.0',
+                                            prefixIcon: Icon(Icons.straighten),
+                                          ),
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Required';
+                                            }
+                                            if (double.tryParse(value) ==
+                                                null) {
+                                              return 'Invalid';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Location Section
+                          const Text(
+                            'LOCATION',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                              color: UnderwaterTheme.textLight,
+                              shadows: UnderwaterTheme.textShadowLight,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _locationController,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Enter location or capture GPS',
+                                    prefixIcon: Icon(Icons.location_on),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: _isLoadingLocation
+                                      ? null
+                                      : _captureLocation,
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                  ),
+                                  child: _isLoadingLocation
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(Icons.my_location),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Fishing Method
+                          const Text(
+                            'FISHING METHOD',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                              color: UnderwaterTheme.textLight,
+                              shadows: UnderwaterTheme.textShadowLight,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedMethod,
+                            style: const TextStyle(
+                              color: UnderwaterTheme.textLight,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            dropdownColor: UnderwaterTheme.deepNavy1,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.phishing),
+                            ),
+                            items: _fishingMethods.map((method) {
+                              return DropdownMenuItem(
+                                value: method,
+                                child: Text(
+                                  method,
+                                  style: const TextStyle(
+                                    color: UnderwaterTheme.textLight,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _selectedMethod = value;
+                                });
+                              }
+                            },
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Weather Display
+                          if (_weatherData != null) ...[
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    UnderwaterTheme.midLavender.withOpacity(
+                                      0.3,
+                                    ),
+                                    UnderwaterTheme.deepPurplePink1.withOpacity(
+                                      0.25,
+                                    ),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: UnderwaterTheme.surfaceCyan1
+                                      .withOpacity(0.5),
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusMedium,
+                                ),
+                                boxShadow: UnderwaterTheme.glowCyan(
+                                  opacity: 0.1,
+                                  blur: 8,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    _weatherData!['icon'],
+                                    style: const TextStyle(fontSize: 32),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${_weatherData!['condition']} • ${_weatherData!['temperature'].toStringAsFixed(1)}°C',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: UnderwaterTheme.textLight,
+                                            shadows:
+                                                UnderwaterTheme.textShadowLight,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Wind: ${_weatherData!['windSpeed'].toStringAsFixed(1)} km/h • Humidity: ${_weatherData!['humidity']}%',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: UnderwaterTheme.textCyan,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: UnderwaterTheme.surfaceCyan1,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+
+                          // Notes
+                          const Text(
+                            'NOTES',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                              color: UnderwaterTheme.textLight,
+                              shadows: UnderwaterTheme.textShadowLight,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _notesController,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              hintText:
+                                  'Add any additional details about your catch...',
+                              alignLabelWithHint: true,
+                            ),
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Submit Button
+                          SizedBox(
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: _submitCatch,
+                              style:
+                                  ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        UnderwaterTheme.surfaceCyan1,
+                                    foregroundColor: UnderwaterTheme.deepNavy2,
+                                    elevation: 0,
+                                    shadowColor: UnderwaterTheme.surfaceCyan1
+                                        .withOpacity(0.5),
+                                  ).copyWith(
+                                    overlayColor: WidgetStateProperty.all(
+                                      UnderwaterTheme.surfaceCyan2.withOpacity(
+                                        0.3,
+                                      ),
+                                    ),
+                                  ),
+                              child: const Text(
+                                'LOG CATCH',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      Icon(Icons.arrow_drop_down, color: UnderwaterTheme.surfaceCyan1),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Weight and Length Row
-              Row(
-                children: [
-                  Expanded(
-                    child: Consumer<AppProvider>(
-                      builder: (context, appProvider, child) {
-                        final useMetric = appProvider.preferences.useMetric;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              useMetric ? 'WEIGHT (KG) *' : 'WEIGHT (LBS) *',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
-                                color: UnderwaterTheme.textLight,
-                                shadows: UnderwaterTheme.textShadowLight,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _weightController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                              ],
-                              decoration: const InputDecoration(
-                                hintText: '0.0',
-                                prefixIcon: Icon(Icons.scale),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Required';
-                                }
-                                if (double.tryParse(value) == null) {
-                                  return 'Invalid';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        );
-                      },
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Consumer<AppProvider>(
-                      builder: (context, appProvider, child) {
-                        final useMetric = appProvider.preferences.useMetric;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              useMetric ? 'LENGTH (CM) *' : 'LENGTH (IN) *',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
-                                color: UnderwaterTheme.textLight,
-                                shadows: UnderwaterTheme.textShadowLight,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _lengthController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                              ],
-                              decoration: const InputDecoration(
-                                hintText: '0.0',
-                                prefixIcon: Icon(Icons.straighten),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Required';
-                                }
-                                if (double.tryParse(value) == null) {
-                                  return 'Invalid';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
+                  ), // End of form container
+                  const SizedBox(height: 100), // Margin at bottom
                 ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // Location Section
-              const Text(
-                'LOCATION',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                  color: UnderwaterTheme.textLight,
-                  shadows: UnderwaterTheme.textShadowLight,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _locationController,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter location or capture GPS',
-                        prefixIcon: Icon(Icons.location_on),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _isLoadingLocation ? null : _captureLocation,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      child: _isLoadingLocation
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.my_location),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // Fishing Method
-              const Text(
-                'FISHING METHOD',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                  color: UnderwaterTheme.textLight,
-                  shadows: UnderwaterTheme.textShadowLight,
-                ),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedMethod,
-                style: const TextStyle(
-                  color: UnderwaterTheme.textLight,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                dropdownColor: UnderwaterTheme.deepNavy1,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.phishing),
-                ),
-                items: _fishingMethods.map((method) {
-                  return DropdownMenuItem(
-                    value: method,
-                    child: Text(
-                      method,
-                      style: const TextStyle(
-                        color: UnderwaterTheme.textLight,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedMethod = value;
-                    });
-                  }
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              // Weather Display
-              if (_weatherData != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        UnderwaterTheme.midLavender.withOpacity(0.3),
-                        UnderwaterTheme.deepPurplePink1.withOpacity(0.25),
-                      ],
-                    ),
-                    border: Border.all(color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5), width: 2),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    boxShadow: UnderwaterTheme.glowCyan(opacity: 0.1, blur: 8),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        _weatherData!['icon'],
-                        style: const TextStyle(fontSize: 32),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${_weatherData!['condition']} • ${_weatherData!['temperature'].toStringAsFixed(1)}°C',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: UnderwaterTheme.textLight,
-                                shadows: UnderwaterTheme.textShadowLight,
-                              ),
-                            ),
-                            Text(
-                              'Wind: ${_weatherData!['windSpeed'].toStringAsFixed(1)} km/h • Humidity: ${_weatherData!['humidity']}%',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: UnderwaterTheme.textCyan,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.check_circle, color: UnderwaterTheme.surfaceCyan1),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-
-              // Notes
-              const Text(
-                'NOTES',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                  color: UnderwaterTheme.textLight,
-                  shadows: UnderwaterTheme.textShadowLight,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _notesController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  hintText: 'Add any additional details about your catch...',
-                  alignLabelWithHint: true,
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // Submit Button
-              SizedBox(
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _submitCatch,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: UnderwaterTheme.surfaceCyan1,
-                    foregroundColor: UnderwaterTheme.deepNavy2,
-                    elevation: 0,
-                    shadowColor: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
-                  ).copyWith(
-                    overlayColor: WidgetStateProperty.all(UnderwaterTheme.surfaceCyan2.withOpacity(0.3)),
-                  ),
-                  child: const Text(
-                    'LOG CATCH',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-          ), // End of form container
-          const SizedBox(height: 100), // Margin at bottom
-          ],
-        ), // End of Column
+              ), // End of Column
             ),
           ),
         );
@@ -1334,4 +1498,3 @@ class _CatchTabState extends State<CatchTab> {
     );
   }
 }
-
