@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Platform-specific generated files (Flutter)
+**/Flutter/ephemeral/
+**/Flutter/GeneratedPluginRegistrant.*
+linux/flutter/generated_plugin*
+macos/Flutter/GeneratedPluginRegistrant.*
+windows/flutter/generated_plugin*
