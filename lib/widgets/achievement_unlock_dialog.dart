@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:intl/intl.dart';
 import '../models/achievement.dart';
 import '../utils/app_theme.dart';
 import '../utils/underwater_theme.dart';
@@ -75,48 +73,6 @@ class _AchievementUnlockDialogState extends State<AchievementUnlockDialog>
     } else {
       widget.onDismiss();
       Navigator.of(context).pop();
-    }
-  }
-
-  Future<void> _shareAchievement() async {
-    HapticFeedback.mediumImpact();
-    
-    final achievement = widget.achievements[_currentIndex];
-    final unlockedDate = achievement.unlockedAt != null
-        ? DateFormat('MMMM d, yyyy').format(achievement.unlockedAt!)
-        : 'Just now';
-    
-    final shareText = '''
-🏆 Achievement Unlocked! 🏆
-
-${achievement.icon} ${achievement.name}
-
-${achievement.description}
-
-Unlocked: $unlockedDate
-
-Category: ${achievement.category.toUpperCase()}
-Progress: ${achievement.currentProgress}/${achievement.requiredCount}
-
-Caught with Big Bass Catcher 🎣
-#BigBassCatcher #FishingAchievement #FishingLife
-''';
-
-    try {
-      final box = context.findRenderObject() as RenderBox?;
-      await Share.share(
-        shareText,
-        subject: '🏆 Big Bass Catcher Achievement: ${achievement.name}',
-        sharePositionOrigin: box != null
-            ? box.localToGlobal(Offset.zero) & box.size
-            : null,
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to share: $e')),
-        );
-      }
     }
   }
 
@@ -238,35 +194,6 @@ Caught with Big Bass Catcher 🎣
                           ),
                         ),
                       ),
-                    
-                    // Share button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _shareAchievement,
-                        icon: const Icon(Icons.share),
-                        label: const Text(
-                          'SHARE',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: UnderwaterTheme.surfaceCyan1,
-                          side: BorderSide(
-                            color: UnderwaterTheme.surfaceCyan1.withOpacity(0.6),
-                            width: 2,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     
                     // Continue button
                     SizedBox(

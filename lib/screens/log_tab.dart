@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
 import '../providers/app_provider.dart';
 import '../models/catch_entry.dart';
 import '../utils/app_theme.dart';
@@ -151,119 +150,6 @@ class _LogTabState extends State<LogTab> {
     return filteredCatches;
   }
 
-  void _showSortOptions() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: UnderwaterTheme.deepNavy1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          side: BorderSide(
-            color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
-            width: 2,
-          ),
-        ),
-        title: const Text(
-          'SORT BY',
-          style: TextStyle(
-            color: UnderwaterTheme.textLight,
-            shadows: UnderwaterTheme.textShadowLight,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSortOption('Date', 'date'),
-            _buildSortOption('Weight', 'weight'),
-            _buildSortOption('Length', 'length'),
-            _buildSortOption('Species', 'species'),
-            const Divider(color: UnderwaterTheme.surfaceCyan1),
-            SwitchListTile(
-              title: const Text(
-                'Ascending',
-                style: TextStyle(color: UnderwaterTheme.textLight),
-              ),
-              value: _sortAscending,
-              activeThumbColor: UnderwaterTheme.surfaceCyan1,
-              onChanged: (value) {
-                setState(() {
-                  _sortAscending = value;
-                });
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSortOption(String label, String value) {
-    return RadioListTile<String>(
-      title: Text(
-        label,
-        style: const TextStyle(color: UnderwaterTheme.textLight),
-      ),
-      value: value,
-      groupValue: _sortBy,
-      activeColor: UnderwaterTheme.surfaceCyan1,
-      onChanged: (val) {
-        setState(() {
-          _sortBy = val!;
-        });
-        Navigator.pop(context);
-      },
-    );
-  }
-
-  void _showFilterOptions() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('FILTER BY'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildFilterOption('All Catches', 'all'),
-            _buildFilterOption('Today', 'today'),
-            _buildFilterOption('This Week', 'week'),
-            _buildFilterOption('This Month', 'month'),
-            _buildFilterOption('Trophies Only', 'trophy'),
-            const Divider(),
-            ListTile(
-              title: Text(
-                _filterSpecies == null ? 'By Species' : 'Clear Species Filter',
-              ),
-              trailing: const Icon(Icons.clear),
-              onTap: () {
-                setState(() {
-                  _filterSpecies = null;
-                });
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _filterBy = 'all';
-                _filterSpecies = null;
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('CLEAR ALL'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('DONE'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _filterBy == value;
     return InkWell(
@@ -346,20 +232,6 @@ class _LogTabState extends State<LogTab> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFilterOption(String label, String value) {
-    return RadioListTile<String>(
-      title: Text(label),
-      value: value,
-      groupValue: _filterBy,
-      onChanged: (val) {
-        setState(() {
-          _filterBy = val!;
-        });
-        Navigator.pop(context);
-      },
     );
   }
 
@@ -670,34 +542,6 @@ class _LogTabState extends State<LogTab> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () async {
-                                      // Get the button's position for iPad popover
-                                      final box = context.findRenderObject() as RenderBox?;
-                                      await _shareCatch(
-                                        catchEntry,
-                                        box != null
-                                            ? box.localToGlobal(Offset.zero) & box.size
-                                            : null,
-                                      );
-                                    },
-                                    icon: const Icon(Icons.share, size: 18),
-                                    label: const Text(
-                                      'SHARE',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: UnderwaterTheme.midPeriwinkle,
-                                      foregroundColor: UnderwaterTheme.textLight,
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                    ),
-                                  ),
-                                ),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -873,82 +717,6 @@ class _LogTabState extends State<LogTab> {
           const SnackBar(
             content: Text('Catch deleted'),
             backgroundColor: AppTheme.colorSecondary,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _shareCatch(CatchEntry catchEntry, Rect? sharePositionOrigin) async {
-    try {
-      // Build share text with catch details
-      final dateFormat = DateFormat('MMM d, yyyy h:mm a');
-      final formattedDate = dateFormat.format(catchEntry.caughtAt);
-      final appProvider = Provider.of<AppProvider>(context, listen: false);
-      final prefs = appProvider.preferences;
-
-      String shareText = '🎣 Big Bass Catcher - My Catch!\n\n';
-      shareText += '🐟 Fish: ${catchEntry.fishName}\n';
-
-      if (catchEntry.weight != null) {
-        shareText += '⚖️ Weight: ${prefs.formatWeight(catchEntry.weight!)}\n';
-      }
-
-      if (catchEntry.length != null) {
-        shareText += '📏 Length: ${prefs.formatLength(catchEntry.length!)}\n';
-      }
-
-      if (catchEntry.fishingMethod.isNotEmpty) {
-        shareText += '🎯 Method: ${catchEntry.fishingMethod}\n';
-      }
-
-      if (catchEntry.isPersonalBest) {
-        shareText += '🏆 Personal Best!\n';
-      }
-
-      if (catchEntry.isTrophyCatch) {
-        shareText += '🏅 Trophy Catch!\n';
-      }
-
-      shareText += '📅 Date: $formattedDate\n';
-
-      if (catchEntry.location != null && catchEntry.location!.isNotEmpty) {
-        shareText += '📍 Location: ${catchEntry.location}\n';
-      }
-
-      if (catchEntry.notes != null && catchEntry.notes!.isNotEmpty) {
-        shareText += '\n📝 Notes: ${catchEntry.notes}\n';
-      }
-
-      // Share with photo if available
-      if (catchEntry.photoPath != null && catchEntry.photoPath!.isNotEmpty) {
-        final file = File(catchEntry.photoPath!);
-        if (await file.exists()) {
-          await Share.shareXFiles(
-            [XFile(catchEntry.photoPath!)],
-            text: shareText,
-            sharePositionOrigin: sharePositionOrigin,
-          );
-        } else {
-          // Photo doesn't exist, share text only
-          await Share.share(
-            shareText,
-            sharePositionOrigin: sharePositionOrigin,
-          );
-        }
-      } else {
-        // No photo, share text only
-        await Share.share(
-          shareText,
-          sharePositionOrigin: sharePositionOrigin,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error sharing catch: $e'),
-            backgroundColor: Colors.red,
           ),
         );
       }

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../providers/app_provider.dart';
 import '../../utils/app_theme.dart';
@@ -30,20 +29,11 @@ class DataSettingsScreen extends StatelessWidget {
       await file.writeAsString(jsonString);
 
       if (context.mounted) {
-        final box = context.findRenderObject() as RenderBox?;
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          subject: 'FishQuest Data Backup',
-          text: 'My FishQuest fishing data backup',
-          sharePositionOrigin: box != null
-              ? box.localToGlobal(Offset.zero) & box.size
-              : null,
-        );
-
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data exported successfully! ✓'),
+          SnackBar(
+            content: Text('Data exported to:\n${file.path}'),
             backgroundColor: AppTheme.colorSuccess,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -82,20 +72,11 @@ class DataSettingsScreen extends StatelessWidget {
       await file.writeAsString(csvString);
 
       if (context.mounted) {
-        final box = context.findRenderObject() as RenderBox?;
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          subject: 'FishQuest Catches Export',
-          text: 'My fishing catches from FishQuest',
-          sharePositionOrigin: box != null
-              ? box.localToGlobal(Offset.zero) & box.size
-              : null,
-        );
-
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('CSV exported successfully! ✓'),
+          SnackBar(
+            content: Text('CSV exported to:\n${file.path}'),
             backgroundColor: AppTheme.colorSuccess,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
