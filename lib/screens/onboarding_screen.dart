@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'dart:ui';
 import '../providers/app_provider.dart';
 import '../models/user_profile.dart';
@@ -18,131 +16,13 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _locationController = TextEditingController();
   String _selectedExperience = '';
   final Set<String> _selectedEnvironments = {};
-  bool _isLoadingLocation = false;
 
   @override
   void dispose() {
     _nameController.dispose();
-    _locationController.dispose();
     super.dispose();
-  }
-
-  Future<void> _getCurrentLocation() async {
-    setState(() => _isLoadingLocation = true);
-    
-    try {
-      // Check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Location services are disabled. Please enable them in your device settings.'),
-              backgroundColor: AppTheme.colorError,
-              action: SnackBarAction(
-                label: 'OPEN SETTINGS',
-                textColor: Colors.white,
-                onPressed: () async {
-                  await Geolocator.openLocationSettings();
-                },
-              ),
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
-        return;
-      }
-
-      // Check permission
-      LocationPermission permission = await Geolocator.checkPermission();
-      
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location permission denied. You can enter your location manually or grant permission later.'),
-                backgroundColor: AppTheme.colorError,
-                duration: Duration(seconds: 4),
-              ),
-            );
-          }
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Location permission permanently denied. Please enable it in app settings.'),
-              backgroundColor: AppTheme.colorError,
-              action: SnackBarAction(
-                label: 'OPEN SETTINGS',
-                textColor: Colors.white,
-                onPressed: () async {
-                  await Geolocator.openAppSettings();
-                },
-              ),
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
-        return;
-      }
-
-      // Get position
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium,
-        timeLimit: const Duration(seconds: 10),
-      );
-
-      // Get address from coordinates
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        final location = '${place.locality ?? ''}, ${place.administrativeArea ?? ''}, ${place.country ?? ''}'
-            .replaceAll(RegExp(r',\s*,'), ',')
-            .replaceAll(RegExp(r'^,\s*|,\s*$'), '')
-            .trim();
-        
-        setState(() {
-          _locationController.text = location.isNotEmpty ? location : 'Location found';
-        });
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location detected successfully! ✓'),
-              backgroundColor: AppTheme.colorSuccess,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not get location: ${e.toString().contains('timeout') ? 'Timed out. Please try again.' : 'Please try again or enter manually.'}'),
-            backgroundColor: AppTheme.colorError,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingLocation = false);
-      }
-    }
   }
 
   Future<void> _submitOnboarding() async {
@@ -160,7 +40,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     final profile = UserProfile(
       name: _nameController.text.trim(),
-      location: _locationController.text.trim(),
       experienceLevel: _selectedExperience,
       favoriteEnvironments: _selectedEnvironments.toList(),
       createdAt: DateTime.now(),
@@ -325,100 +204,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 20),
-                        
-                        // Location Field with Geo Button
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _locationController,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                decoration: InputDecoration(
-                                  labelText: 'LOCATION',
-                                  hintText: 'City, State/Country',
-                                  labelStyle: TextStyle(
-                                    color: UnderwaterTheme.textLight.withOpacity(0.9),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1,
-                                  ),
-                                  hintStyle: TextStyle(
-                                    color: UnderwaterTheme.textCyan.withOpacity(0.6),
-                                  ),
-                                  filled: true,
-                                  fillColor: UnderwaterTheme.deepNavy2.withOpacity(0.5),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
-                                      width: 2,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: UnderwaterTheme.surfaceCyan1,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  errorBorder: const OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: AppTheme.colorError,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  focusedErrorBorder: const OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: AppTheme.colorError,
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Please enter your location';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              height: 56,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    UnderwaterTheme.deepNavy2.withOpacity(0.7),
-                                    UnderwaterTheme.deepNavy1.withOpacity(0.6),
-                                  ],
-                                ),
-                                border: Border.all(
-                                  color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
-                                  width: 2,
-                                ),
-                              ),
-                              child: IconButton(
-                                onPressed: _isLoadingLocation ? null : _getCurrentLocation,
-                                icon: _isLoadingLocation
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: UnderwaterTheme.surfaceCyan1,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.my_location,
-                                        color: UnderwaterTheme.surfaceCyan1,
-                                      ),
-                                tooltip: 'Get current location',
-                              ),
-                            ),
-                          ],
-                        ),
+
                         const SizedBox(height: 24),
                         
                         // Experience Level

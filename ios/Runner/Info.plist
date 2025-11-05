@@ -28,12 +28,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Big Bass Catcher needs access to your camera to take photos of your catches.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Big Bass Catcher needs your location to record fishing spots and deliver accurate weather insights even when you use the app in the background.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Big Bass Catcher needs your location to record where you caught your fish and provide accurate weather conditions.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Big Bass Catcher needs your location to record where you caught your fish and provide accurate weather conditions for your catches.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Big Bass Catcher needs to save photos of your catches to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

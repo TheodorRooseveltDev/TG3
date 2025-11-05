@@ -50,7 +50,7 @@ class DataSettingsScreen extends StatelessWidget {
     try {
       // Create CSV header
       final csvLines = <String>[];
-      csvLines.add('Date,Fish Species,Weight (kg),Length (cm),Location,Method,Weather');
+      csvLines.add('Date,Fish Species,Weight (kg),Length (cm),Method');
 
       // Add catch data
       for (final catch_ in appProvider.catches) {
@@ -59,9 +59,7 @@ class DataSettingsScreen extends StatelessWidget {
           catch_.fishName,
           catch_.weight?.toString() ?? '0',
           catch_.length?.toString() ?? '0',
-          (catch_.location ?? '').replaceAll(',', ';'), // Escape commas
           catch_.fishingMethod.replaceAll(',', ';'),
-          (catch_.weatherConditions ?? '').replaceAll(',', ';'),
         ];
         csvLines.add(row.join(','));
       }

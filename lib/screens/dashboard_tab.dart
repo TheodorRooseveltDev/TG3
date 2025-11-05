@@ -9,8 +9,6 @@ import '../providers/app_provider.dart';
 import '../utils/app_theme.dart';
 import '../utils/underwater_theme.dart';
 import '../models/fish_species.dart';
-import '../services/location_service.dart';
-import '../services/weather_service.dart';
 import '../widgets/frosted_app_bar.dart';
 import 'quest_history_screen.dart';
 import 'settings_tab.dart';
@@ -38,10 +36,6 @@ class _DashboardTabState extends State<DashboardTab>
   List<String> _selectedFish = [];
   bool _showQuestContent = false; // Add flag to control quest visibility
 
-  Map<String, dynamic>? _weatherData;
-  bool _isLoadingWeather = false;
-  String? _weatherError;
-
   // All available fish images
   final List<String> _fishImages = [
     'assets/images/largemouth_bass.png',
@@ -68,7 +62,6 @@ class _DashboardTabState extends State<DashboardTab>
   void initState() {
     super.initState();
     _startQuestTimer();
-    _fetchCurrentWeather();
 
     // Initialize with 3 random fish
     final shuffled = List<String>.from(_fishImages)..shuffle();
@@ -177,81 +170,6 @@ class _DashboardTabState extends State<DashboardTab>
     final seconds = (difference.inSeconds % 60).toString().padLeft(2, '0');
 
     return '$hours:$minutes:$seconds';
-  }
-
-  Future<void> _fetchCurrentWeather() async {
-    setState(() {
-      _isLoadingWeather = true;
-      _weatherError = null;
-    });
-
-    try {
-      final appProvider = Provider.of<AppProvider>(context, listen: false);
-      if (!appProvider.preferences.locationServicesEnabled) {
-        if (mounted) {
-          setState(() {
-            _weatherData = null;
-            _weatherError =
-                'Enable location features in Settings to see local weather.';
-            _isLoadingWeather = false;
-          });
-        }
-        return;
-      }
-
-      final permissionStatus = await LocationService.checkPermissions();
-      if (permissionStatus['granted'] != true) {
-        if (mounted) {
-          setState(() {
-            _weatherData = null;
-            _weatherError =
-                permissionStatus['message'] ??
-                'Location permission is required to show weather.';
-            _isLoadingWeather = false;
-          });
-        }
-        return;
-      }
-
-      // Get current location
-      final locationData = await LocationService.getLocationWithAddress();
-
-      if (locationData != null) {
-        final latitude = locationData['latitude'];
-        final longitude = locationData['longitude'];
-
-        // Fetch weather for current location
-        final weather = await WeatherService.getCurrentWeather(
-          latitude,
-          longitude,
-        );
-
-        if (weather != null && mounted) {
-          setState(() {
-            _weatherData = weather;
-            _isLoadingWeather = false;
-          });
-        } else if (mounted) {
-          setState(() {
-            _weatherError = 'Could not fetch weather data';
-            _isLoadingWeather = false;
-          });
-        }
-      } else if (mounted) {
-        setState(() {
-          _weatherError = 'Location not available';
-          _isLoadingWeather = false;
-        });
-      }
-    } catch (e) {
-      print('Error fetching weather for dashboard: $e');
-      if (mounted) {
-        setState(() {
-          _weatherError = 'Weather unavailable';
-          _isLoadingWeather = false;
-        });
-      }
-    }
   }
 
   @override
@@ -367,7 +285,6 @@ class _DashboardTabState extends State<DashboardTab>
                   _buildDashboardHeader(),
                   _buildQuestSection(),
                   _buildRecentCatches(),
-                  _buildWeatherWidget(),
                   _buildQuickAccessSection(),
                   const SizedBox(height: 100), // Bottom nav space
                 ],
@@ -392,12 +309,6 @@ class _DashboardTabState extends State<DashboardTab>
           ),
           child: Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/logo/app_bbc_background_1.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
               child: Container(
@@ -405,16 +316,7 @@ class _DashboardTabState extends State<DashboardTab>
                   horizontal: 20,
                   vertical: 28,
                 ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      UnderwaterTheme.surfaceCyan1.withOpacity(0.2),
-                      UnderwaterTheme.surfaceCyan2.withOpacity(0.15),
-                    ],
-                  ),
-                ),
+
                 child: Column(
                   children: [
                     Row(
@@ -510,31 +412,7 @@ class _DashboardTabState extends State<DashboardTab>
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on,
-                                    size: 14,
-                                    color: AppTheme.colorAccent.withOpacity(
-                                      0.9,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      profile.location,
-                                      style: TextStyle(
-                                        color: AppTheme.colorTextPrimary
-                                            .withOpacity(0.85),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
+
                             ],
                           ),
                         ),
@@ -1963,306 +1841,6 @@ class _DashboardTabState extends State<DashboardTab>
         );
       },
     );
-  }
-
-  Widget _buildWeatherWidget() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        image: const DecorationImage(
-          image: AssetImage('assets/logo/app_bbc_background_1.jpg'),
-          fit: BoxFit.cover,
-        ),
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  UnderwaterTheme.upperAqua1.withOpacity(0.3),
-                  UnderwaterTheme.upperAqua2.withOpacity(0.25),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              border: Border.all(
-                color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
-                width: 2,
-              ),
-              boxShadow: UnderwaterTheme.glowCyan(opacity: 0.2, blur: 16),
-            ),
-            child: _isLoadingWeather
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: UnderwaterTheme.surfaceCyan1,
-                    ),
-                  )
-                : _weatherError != null
-                ? Column(
-                    children: [
-                      const Icon(
-                        Icons.cloud_off,
-                        size: 48,
-                        color: UnderwaterTheme.textCyan,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _weatherError!,
-                        style: const TextStyle(
-                          color: UnderwaterTheme.textCyan,
-                          fontSize: 16,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton.icon(
-                        onPressed: _fetchCurrentWeather,
-                        icon: const Icon(
-                          Icons.refresh,
-                          size: 16,
-                          color: UnderwaterTheme.surfaceCyan1,
-                        ),
-                        label: const Text(
-                          'Retry',
-                          style: TextStyle(color: UnderwaterTheme.surfaceCyan1),
-                        ),
-                      ),
-                    ],
-                  )
-                : _weatherData != null
-                ? Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(width: 40), // Balance space
-                          Column(
-                            children: [
-                              Text(
-                                _weatherData!['icon'],
-                                style: const TextStyle(fontSize: 80),
-                              ),
-                              const SizedBox(height: 8),
-                              Consumer<AppProvider>(
-                                builder: (context, appProvider, child) {
-                                  final temp =
-                                      _weatherData!['temperature'] as double;
-                                  final useMetric =
-                                      appProvider.preferences.useMetric;
-
-                                  return Column(
-                                    children: [
-                                      Text(
-                                        useMetric
-                                            ? '${temp.toStringAsFixed(0)}°C'
-                                            : '${(temp * 9 / 5 + 32).toStringAsFixed(0)}°F',
-                                        style: const TextStyle(
-                                          color: UnderwaterTheme.textLight,
-                                          fontSize: 40,
-                                          fontWeight: FontWeight.w300,
-                                          height: 1.0,
-                                          shadows:
-                                              UnderwaterTheme.textShadowLight,
-                                        ),
-                                      ),
-                                      Text(
-                                        useMetric
-                                            ? '${(temp * 9 / 5 + 32).toStringAsFixed(0)}°F'
-                                            : '${temp.toStringAsFixed(0)}°C',
-                                        style: const TextStyle(
-                                          color: UnderwaterTheme.textCyan,
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                          SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: OutlinedButton(
-                              onPressed: _fetchCurrentWeather,
-                              style: OutlinedButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                side: BorderSide(
-                                  color: UnderwaterTheme.surfaceCyan1
-                                      .withOpacity(0.7),
-                                  width: 2,
-                                ),
-                                backgroundColor: UnderwaterTheme.deepNavy1
-                                    .withOpacity(0.5),
-                                foregroundColor: UnderwaterTheme.surfaceCyan1,
-                              ),
-                              child: const Icon(
-                                Icons.refresh,
-                                color: UnderwaterTheme.surfaceCyan1,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _weatherData!['condition'],
-                        style: const TextStyle(
-                          color: UnderwaterTheme.textLight,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          shadows: UnderwaterTheme.textShadowLight,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.water_drop,
-                            size: 16,
-                            color: UnderwaterTheme.surfaceCyan1,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${_weatherData!['humidity']}%',
-                            style: const TextStyle(
-                              color: UnderwaterTheme.textCyan,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          const Icon(
-                            Icons.air,
-                            size: 16,
-                            color: UnderwaterTheme.surfaceCyan1,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${_weatherData!['windSpeed'].toStringAsFixed(1)} km/h',
-                            style: const TextStyle(
-                              color: UnderwaterTheme.textCyan,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              UnderwaterTheme.surfaceCyan1.withOpacity(0.3),
-                              UnderwaterTheme.surfaceCyan2.withOpacity(0.2),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusSmall,
-                          ),
-                          border: Border.all(
-                            color: UnderwaterTheme.surfaceCyan1,
-                            width: 2,
-                          ),
-                          boxShadow: UnderwaterTheme.glowCyan(
-                            opacity: 0.3,
-                            blur: 8,
-                          ),
-                        ),
-                        child: Text(
-                          _getFishingConditionText(),
-                          style: const TextStyle(
-                            color: UnderwaterTheme.textLight,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            shadows: UnderwaterTheme.textShadowLight,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      const Icon(
-                        Icons.wb_sunny,
-                        size: 48,
-                        color: UnderwaterTheme.textLight,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Weather',
-                              style: TextStyle(
-                                color: UnderwaterTheme.textLight,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                shadows: UnderwaterTheme.textShadowLight,
-                              ),
-                            ),
-                            Text(
-                              'Loading weather data...',
-                              style: TextStyle(
-                                color: UnderwaterTheme.textCyan,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _getFishingConditionText() {
-    if (_weatherData == null) return 'Check conditions for fishing';
-
-    final temp = _weatherData!['temperature'];
-    final condition = _weatherData!['condition'].toLowerCase();
-
-    // Temperature-based conditions (Celsius)
-    if (temp < 0) {
-      return 'Very cold - Ice fishing conditions';
-    } else if (temp < 10) {
-      return 'Cold - Fish are less active';
-    } else if (temp >= 15 && temp <= 25) {
-      if (condition.contains('clear') || condition.contains('partly')) {
-        return 'Perfect fishing weather! 🎣';
-      } else if (condition.contains('rain')) {
-        return 'Good bite expected before the rain!';
-      }
-      return 'Great conditions for fishing!';
-    } else if (temp > 30) {
-      return 'Hot - Fish deeper waters';
-    }
-
-    // Condition-based advice
-    if (condition.contains('storm') || condition.contains('thunder')) {
-      return 'Not safe for fishing - Stay indoors';
-    } else if (condition.contains('rain')) {
-      return 'Good conditions - Fish are active!';
-    } else if (condition.contains('cloud')) {
-      return 'Overcast - Good for fishing!';
-    }
-
-    return 'Check local conditions before heading out';
   }
 
   Widget _buildQuickAccessSection() {

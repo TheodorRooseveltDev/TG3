@@ -5,7 +5,6 @@ import '../providers/app_provider.dart';
 import '../services/fish_database.dart';
 import '../utils/app_theme.dart';
 import '../utils/underwater_theme.dart';
-import '../widgets/habitat_map.dart';
 import '../widgets/frosted_app_bar.dart';
 import 'settings_tab.dart';
 import 'unlock_fish_screen.dart';
@@ -522,7 +521,7 @@ class _FishCard extends StatelessWidget {
                         const SizedBox(height: 16),
                         
                         // Habitat Map
-                        HabitatMap(fish: fish),
+                        // Map removed as it was location-based
                         const SizedBox(height: 16),
                         Text(
                           'HABITAT MAP',

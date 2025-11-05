@@ -240,9 +240,8 @@ class _LogTabState extends State<LogTab> {
     print('=== CATCH DETAILS ===');
     print('Fish: ${catchEntry.fishName}');
     print('Method: "${catchEntry.fishingMethod}"');
-    print('Location: "${catchEntry.location}"');
+    print('Location: Not available (removed)');
     print('Notes: "${catchEntry.notes}"');
-    print('Weather: "${catchEntry.weatherConditions}"');
     print('====================');
     
     showDialog(
@@ -482,13 +481,7 @@ class _LogTabState extends State<LogTab> {
 
                             // Location - Always show if data exists
                             const SizedBox(height: 12),
-                            _buildInfoCard(
-                              'LOCATION',
-                              (catchEntry.location == null || catchEntry.location!.isEmpty) 
-                                  ? 'Not specified' 
-                                  : catchEntry.location!,
-                              Icons.location_on,
-                            ),
+                            // Location card removed
 
                             // Notes - Only show if not empty
                             if (catchEntry.notes != null && catchEntry.notes!.isNotEmpty) ...[

@@ -18,8 +18,7 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _locationController;
+  final TextEditingController _nameController = TextEditingController();
   late String _selectedExperience;
   late Set<String> _selectedEnvironments;
   XFile? _newAvatarFile;
@@ -29,8 +28,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     final profile = Provider.of<AppProvider>(context, listen: false).userProfile!;
-    _nameController = TextEditingController(text: profile.name);
-    _locationController = TextEditingController(text: profile.location);
+    _nameController.text = profile.name;
     _selectedExperience = profile.experienceLevel;
     _selectedEnvironments = Set<String>.from(profile.favoriteEnvironments);
     _currentAvatarPath = profile.avatarPath;
@@ -39,7 +37,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _locationController.dispose();
     super.dispose();
   }
 
@@ -84,7 +81,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final updatedProfile = UserProfile(
       name: _nameController.text.trim(),
-      location: _locationController.text.trim(),
       experienceLevel: _selectedExperience,
       favoriteEnvironments: _selectedEnvironments.toList(),
       avatarPath: _newAvatarFile?.path ?? _currentAvatarPath,
@@ -346,83 +342,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Please enter your name';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 24),
-
-              // Location Field
-              Text(
-                'LOCATION',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: UnderwaterTheme.surfaceCyan1,
-                  letterSpacing: 1,
-                  shadows: [
-                    Shadow(
-                      color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _locationController,
-                style: const TextStyle(color: UnderwaterTheme.textLight),
-                decoration: InputDecoration(
-                  hintText: 'Enter your location',
-                  hintStyle: TextStyle(
-                    color: UnderwaterTheme.textLight.withOpacity(0.5),
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.location_on,
-                    color: UnderwaterTheme.surfaceCyan1,
-                  ),
-                  filled: true,
-                  fillColor: UnderwaterTheme.deepNavy1.withOpacity(0.5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    borderSide: const BorderSide(
-                      color: UnderwaterTheme.surfaceCyan1,
-                      width: 2,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    borderSide: BorderSide(
-                      color: UnderwaterTheme.surfaceCyan1.withOpacity(0.5),
-                      width: 2,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    borderSide: const BorderSide(
-                      color: UnderwaterTheme.surfaceCyan1,
-                      width: 2,
-                    ),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    borderSide: const BorderSide(
-                      color: UnderwaterTheme.deepPurplePink1,
-                      width: 2,
-                    ),
-                  ),
-                  focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    borderSide: const BorderSide(
-                      color: UnderwaterTheme.deepPurplePink1,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your location';
                   }
                   return null;
                 },

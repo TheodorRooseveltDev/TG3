@@ -340,12 +340,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             value: profile.name,
                           ),
                           const SizedBox(height: 12),
-                          _ProfileInfoCard(
-                            icon: Icons.location_on,
-                            label: 'LOCATION',
-                            value: profile.location,
-                          ),
-                          const SizedBox(height: 12),
+
                           _ProfileInfoCard(
                             icon: Icons.emoji_events,
                             label: 'EXPERIENCE LEVEL',

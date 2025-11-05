@@ -44,11 +44,7 @@ dependencies:
   # Image Picker
   image_picker: ^1.0.7
   
-  # Location Services
-  geolocator: ^11.0.0
-  geocoding: ^2.1.1
-  
-  # Weather (HTTP requests)
+  # HTTP requests
   http: ^1.2.0
   
   # Intl for date formatting
@@ -62,10 +58,6 @@ dependencies:
   
   # WebView for in-app browser
   webview_flutter: ^4.4.2
-  
-  # Map functionality
-  flutter_map: ^7.0.2
-  latlong2: ^0.9.0
 
 dev_dependencies:
   flutter_test:

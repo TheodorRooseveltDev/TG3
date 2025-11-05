@@ -3,18 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:geolocator/geolocator.dart';
 import '../utils/app_theme.dart';
 import '../utils/underwater_theme.dart';
 import '../providers/app_provider.dart';
 import '../models/fish_species.dart';
 import '../models/catch_entry.dart';
-import '../widgets/habitat_map.dart';
 import '../widgets/frosted_app_bar.dart';
 import 'settings_tab.dart';
 import '../services/fish_database.dart';
-import '../services/location_service.dart';
-import '../services/weather_service.dart';
 import 'unlock_fish_screen.dart';
 
 class CatchTab extends StatefulWidget {
@@ -29,15 +25,10 @@ class _CatchTabState extends State<CatchTab> {
   final _weightController = TextEditingController();
   final _lengthController = TextEditingController();
   final _notesController = TextEditingController();
-  final _locationController = TextEditingController();
 
   XFile? _imageFile;
   FishSpecies? _selectedFish;
   String _selectedMethod = 'Casting';
-  bool _isLoadingLocation = false;
-  double? _latitude;
-  double? _longitude;
-  Map<String, dynamic>? _weatherData;
 
   final List<String> _fishingMethods = [
     'Casting',
@@ -55,7 +46,6 @@ class _CatchTabState extends State<CatchTab> {
     _weightController.dispose();
     _lengthController.dispose();
     _notesController.dispose();
-    _locationController.dispose();
     super.dispose();
   }
 
@@ -140,158 +130,6 @@ class _CatchTabState extends State<CatchTab> {
         ),
       ),
     );
-  }
-
-  Future<void> _captureLocation() async {
-    final appProvider = Provider.of<AppProvider>(context, listen: false);
-    if (!appProvider.preferences.locationServicesEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Enable location features in Settings to capture your fishing spot automatically.',
-          ),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoadingLocation = true;
-    });
-
-    try {
-      // First check permissions explicitly
-      final permissionCheck = await LocationService.checkPermissions(
-        requestPermission: true,
-      );
-
-      if (permissionCheck['granted'] != true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                permissionCheck['message'] ?? 'Location permission denied',
-              ),
-              duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'Settings',
-                onPressed: () async {
-                  await Geolocator.openLocationSettings();
-                },
-              ),
-            ),
-          );
-        }
-        setState(() {
-          _isLoadingLocation = false;
-        });
-        return;
-      }
-
-      final locationData = await LocationService.getLocationWithAddress();
-
-      if (locationData != null) {
-        setState(() {
-          _latitude = locationData['latitude'];
-          _longitude = locationData['longitude'];
-          _locationController.text = locationData['address'];
-        });
-
-        // Auto-fetch weather after getting location
-        await _fetchWeather();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('📍 Location captured successfully!'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not get location. Please try again.'),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print('Error capturing location: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error capturing location: ${e.toString().split(':').last.trim()}',
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isLoadingLocation = false;
-      });
-    }
-  }
-
-  Future<void> _fetchWeather() async {
-    if (_latitude == null || _longitude == null) {
-      print('Cannot fetch weather: no location coordinates');
-      return;
-    }
-
-    try {
-      print('Fetching weather for location: $_latitude, $_longitude');
-      final weather = await WeatherService.getCurrentWeather(
-        _latitude!,
-        _longitude!,
-      );
-
-      if (weather != null) {
-        setState(() {
-          _weatherData = weather;
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '${weather['icon']} Weather updated: ${weather['condition']}',
-              ),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } else {
-        print('Weather API returned null data');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Could not fetch weather data. Please check your internet connection.',
-              ),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print('Error fetching weather: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Weather unavailable: ${e.toString().split(':').last.trim()}',
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
   }
 
   void _showFishSelectionDialog() {
@@ -698,11 +536,6 @@ class _CatchTabState extends State<CatchTab> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Habitat Map
-                        HabitatMap(fish: fish),
-
-                        const SizedBox(height: 16),
-
                         // Select Button
                         SizedBox(
                           width: double.infinity,
@@ -789,15 +622,6 @@ class _CatchTabState extends State<CatchTab> {
         ? lengthInput
         : lengthInput * 2.54; // Convert inches to cm if needed
 
-    // Build weather conditions string
-    String? weatherConditions;
-    if (_weatherData != null) {
-      weatherConditions =
-          '${_weatherData!['condition']} • ${_weatherData!['temperature'].toStringAsFixed(1)}°C • '
-          'Wind: ${_weatherData!['windSpeed'].toStringAsFixed(1)} km/h • '
-          'Humidity: ${_weatherData!['humidity']}%';
-    }
-
     // Create catch entry
     final catchEntry = CatchEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -806,15 +630,9 @@ class _CatchTabState extends State<CatchTab> {
       photoPath: _imageFile?.path,
       weight: weight,
       length: length,
-      location: _locationController.text.isNotEmpty
-          ? _locationController.text
-          : 'Unknown location',
-      latitude: _latitude,
-      longitude: _longitude,
       caughtAt: DateTime.now(),
       fishingMethod: _selectedMethod,
       notes: _notesController.text,
-      weatherConditions: weatherConditions,
     );
 
     // Add to provider (reuse provider variable from above)
@@ -837,13 +655,9 @@ class _CatchTabState extends State<CatchTab> {
         _imageFile = null;
         _selectedFish = null;
         _selectedMethod = 'Casting';
-        _latitude = null;
-        _longitude = null;
-        _weatherData = null;
         _weightController.clear();
         _lengthController.clear();
         _notesController.clear();
-        _locationController.clear();
       });
     }
   }
@@ -1263,56 +1077,6 @@ class _CatchTabState extends State<CatchTab> {
                           const SizedBox(height: 20),
 
                           // Location Section
-                          const Text(
-                            'LOCATION',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                              color: UnderwaterTheme.textLight,
-                              shadows: UnderwaterTheme.textShadowLight,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _locationController,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Enter location or capture GPS',
-                                    prefixIcon: Icon(Icons.location_on),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                height: 56,
-                                child: ElevatedButton(
-                                  onPressed: _isLoadingLocation
-                                      ? null
-                                      : _captureLocation,
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                  ),
-                                  child: _isLoadingLocation
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : const Icon(Icons.my_location),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 20),
-
                           // Fishing Method
                           const Text(
                             'FISHING METHOD',
@@ -1359,76 +1123,6 @@ class _CatchTabState extends State<CatchTab> {
                           ),
 
                           const SizedBox(height: 20),
-
-                          // Weather Display
-                          if (_weatherData != null) ...[
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    UnderwaterTheme.midLavender.withOpacity(
-                                      0.3,
-                                    ),
-                                    UnderwaterTheme.deepPurplePink1.withOpacity(
-                                      0.25,
-                                    ),
-                                  ],
-                                ),
-                                border: Border.all(
-                                  color: UnderwaterTheme.surfaceCyan1
-                                      .withOpacity(0.5),
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusMedium,
-                                ),
-                                boxShadow: UnderwaterTheme.glowCyan(
-                                  opacity: 0.1,
-                                  blur: 8,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    _weatherData!['icon'],
-                                    style: const TextStyle(fontSize: 32),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '${_weatherData!['condition']} • ${_weatherData!['temperature'].toStringAsFixed(1)}°C',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: UnderwaterTheme.textLight,
-                                            shadows:
-                                                UnderwaterTheme.textShadowLight,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Wind: ${_weatherData!['windSpeed'].toStringAsFixed(1)} km/h • Humidity: ${_weatherData!['humidity']}%',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: UnderwaterTheme.textCyan,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.check_circle,
-                                    color: UnderwaterTheme.surfaceCyan1,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                          ],
 
                           // Notes
                           const Text(

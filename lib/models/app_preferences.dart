@@ -3,7 +3,6 @@ class AppPreferences {
   final bool hapticsEnabled;
   final bool soundEnabled;
   final bool notificationsEnabled;
-  final bool locationServicesEnabled;
   final String theme; // 'light', 'dark', 'system'
 
   const AppPreferences({
@@ -11,7 +10,6 @@ class AppPreferences {
     this.hapticsEnabled = true,
     this.soundEnabled = true,
     this.notificationsEnabled = true,
-    this.locationServicesEnabled = true,
     this.theme = 'light',
   });
 
@@ -20,7 +18,6 @@ class AppPreferences {
     bool? hapticsEnabled,
     bool? soundEnabled,
     bool? notificationsEnabled,
-    bool? locationServicesEnabled,
     String? theme,
   }) {
     return AppPreferences(
@@ -28,8 +25,6 @@ class AppPreferences {
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       soundEnabled: soundEnabled ?? this.soundEnabled,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
-      locationServicesEnabled:
-          locationServicesEnabled ?? this.locationServicesEnabled,
       theme: theme ?? this.theme,
     );
   }
@@ -40,7 +35,6 @@ class AppPreferences {
       'hapticsEnabled': hapticsEnabled,
       'soundEnabled': soundEnabled,
       'notificationsEnabled': notificationsEnabled,
-      'locationServicesEnabled': locationServicesEnabled,
       'theme': theme,
     };
   }
@@ -51,7 +45,6 @@ class AppPreferences {
       hapticsEnabled: json['hapticsEnabled'] ?? true,
       soundEnabled: json['soundEnabled'] ?? true,
       notificationsEnabled: json['notificationsEnabled'] ?? true,
-      locationServicesEnabled: json['locationServicesEnabled'] ?? true,
       theme: json['theme'] ?? 'light',
     );
   }

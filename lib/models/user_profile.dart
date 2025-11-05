@@ -1,6 +1,5 @@
 class UserProfile {
   final String name;
-  final String location;
   final String experienceLevel; // 'beginner', 'intermediate', 'expert'
   final List<String> favoriteEnvironments; // 'lakes', 'rivers', 'sea', 'ponds'
   final String? avatarPath;
@@ -14,7 +13,6 @@ class UserProfile {
 
   const UserProfile({
     required this.name,
-    required this.location,
     required this.experienceLevel,
     required this.favoriteEnvironments,
     this.avatarPath,
@@ -30,7 +28,6 @@ class UserProfile {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'location': location,
       'experienceLevel': experienceLevel,
       'favoriteEnvironments': favoriteEnvironments,
       'avatarPath': avatarPath,
@@ -47,7 +44,6 @@ class UserProfile {
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       name: json['name'],
-      location: json['location'],
       experienceLevel: json['experienceLevel'],
       favoriteEnvironments: List<String>.from(json['favoriteEnvironments']),
       avatarPath: json['avatarPath'],
@@ -65,7 +61,6 @@ class UserProfile {
 
   UserProfile copyWith({
     String? name,
-    String? location,
     String? experienceLevel,
     List<String>? favoriteEnvironments,
     String? avatarPath,
@@ -79,7 +74,6 @@ class UserProfile {
   }) {
     return UserProfile(
       name: name ?? this.name,
-      location: location ?? this.location,
       experienceLevel: experienceLevel ?? this.experienceLevel,
       favoriteEnvironments: favoriteEnvironments ?? this.favoriteEnvironments,
       avatarPath: avatarPath ?? this.avatarPath,

@@ -136,14 +136,6 @@ class SettingsTab extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                if (userProfile.location.isNotEmpty)
-                                  Text(
-                                    userProfile.location,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: UnderwaterTheme.textCyan,
-                                    ),
-                                  ),
                               ],
                             ),
                           ),
@@ -361,7 +353,7 @@ class SettingsTab extends StatelessWidget {
                               title: 'Privacy Policy',
                               subtitle: 'How we handle your data',
                               onTap: () {
-                                _openWebView(context, 'Privacy Policy', 'https://www.termsfeed.com/live/f5a1efb4-4c06-413b-a266-bb2ff1466fa4');
+                                _openWebView(context, 'Privacy Policy', 'https://bigbasscatcher.app/privacy-policy/');
                               },
                             ),
                             
@@ -371,7 +363,7 @@ class SettingsTab extends StatelessWidget {
                               title: 'Terms & Conditions',
                               subtitle: 'Terms of service',
                               onTap: () {
-                                _openWebView(context, 'Terms & Conditions', 'https://www.termsfeed.com/live/85184d36-4301-4a9a-9bd7-26fd75ed4b98');
+                                _openWebView(context, 'Terms & Conditions', 'https://bigbasscatcher.app/terms/');
                               },
                             ),
                             
